@@ -2,5 +2,4 @@
 #define _IMGPROC_H_
 
 
-
 #endif
