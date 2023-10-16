@@ -3,6 +3,8 @@
 
 namespace PZTIMAGE{
 
+	bool TestCore();
+
 }
 
 #endif

@@ -1,8 +1,8 @@
-#include "Core.h"
+#include "DefectDetection.h"
 
 namespace PZTIMAGE {
 
-	bool TestCore() {
+	bool TestDefectDetection() {
 		bool res = false;
 
 		return res;

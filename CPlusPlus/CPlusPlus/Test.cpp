@@ -1,8 +1,8 @@
-#include "Core.h"
+#include"Test.h"
 
 namespace PZTIMAGE {
 
-	bool TestCore() {
+	bool TestTest() {
 		bool res = false;
 
 		return res;
