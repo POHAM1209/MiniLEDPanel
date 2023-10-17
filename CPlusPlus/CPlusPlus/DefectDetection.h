@@ -1,7 +1,9 @@
 #ifndef _DEFECTDETECTION_H_
 #define _DEFECTDETECTION_H_
 
-// 定义接口
+#if
+
+// 
 namespace PZTIMAGE {
 
 	bool TestDefectDetection();
