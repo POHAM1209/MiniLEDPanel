@@ -1,8 +1,6 @@
 #ifndef _DEFECTDETECTION_H_
 #define _DEFECTDETECTION_H_
 
-#define IntPtr long long*
-
 // 
 namespace PZTIMAGE {
 	// define enum
@@ -32,7 +30,7 @@ namespace PZTIMAGE {
 	// brief : 
 	// param0: 
 	// return: 
-	bool MiniLEDPanelDetection(IntPtr t_imgPtr, ImageMeta t_imgMeta, FunctionOption t_opt, std::vector<Defect>& t_res);
+	bool MiniLEDPanelDetection(unsigned char* t_imgPtr, ImageMeta t_imgMeta, FunctionOption t_opt, std::vector<Defect>& t_res);
 	
 	bool TestDefectDetection();
 }
