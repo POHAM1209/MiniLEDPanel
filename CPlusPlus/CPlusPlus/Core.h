@@ -16,6 +16,12 @@ namespace PZTIMAGE{
 
 	// define class
 	class PZTImage{
+	public:
+		PZTImage();
+		PZTImage(const PZTImage& t_other);
+		PZTImage& operator = (const PZTImage& t_other);
+		~PZTImage();
+
 	private:
 		cv::Mat m_container;
 		cv::Mat m_mark;
