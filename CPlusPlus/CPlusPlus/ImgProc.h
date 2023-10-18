@@ -2,6 +2,7 @@
 #define _IMGPROC_H_
 
 #include "Core.h"
+#include "CustomerType"
 
 namespace PZTIMAGE {
 
@@ -14,7 +15,11 @@ namespace PZTIMAGE {
 		static bool connection(PZTRegions t_reg, PZTRegions& t_regs);
 
 		//
-		static bool  
+		static bool reduce_domain(PZTImage t_imgI, PZTRegions t_reg, PZTImage t_imgO);
+	
+		//
+		static bool select_shape(PZTRegions t_regI, PZTRegions t_regO, float t_min, float t_max); 
+
 	};
 
 	bool TestImgProc();
