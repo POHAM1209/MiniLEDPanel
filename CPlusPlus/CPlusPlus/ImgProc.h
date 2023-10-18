@@ -4,10 +4,15 @@
 #include "Core.h"
 #include "Defines.h"
 
+#include <string>
+
 namespace PZTIMAGE {
 
 	class OperatorSet{
 	public:
+		//
+		static bool read_image(PZTImage& t_imgO, std::string t_fileName);
+
 		// 
 		static bool threshold(PZTImage t_img, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray); 
 
