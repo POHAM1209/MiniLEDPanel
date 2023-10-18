@@ -18,6 +18,7 @@ namespace PZTIMAGE{
 	class PZTImage{
 	private:
 		cv::Mat m_container;
+		cv::Mat m_mark;
 	};
 
 	class PZTRegions{
