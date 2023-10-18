@@ -1,7 +1,7 @@
 #ifndef _CORE_H_
 #define _CORE_H_
 
-#include <opencv2/core.h>
+#include <opencv2/core.hpp>
 
 #include <string>
 #include <vector>
