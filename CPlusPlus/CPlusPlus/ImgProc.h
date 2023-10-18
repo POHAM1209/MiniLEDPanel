@@ -5,7 +5,7 @@
 
 namespace PZTIMAGE {
 
-	class OPeratorSet{
+	class OperatorSet{
 	public:
 		// 
 		static bool threshold(PZTImage t_img, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray); 
