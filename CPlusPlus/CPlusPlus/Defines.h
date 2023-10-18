@@ -3,7 +3,12 @@
 
 namespace PZTIMAGE{
 
-    //enum Features{int i};
+    enum Features{
+    	FEATURES_AREA = 0,
+	FEATURES_CIRCULARITY,
+	FEATURES_ROW,
+	FEATURES_COLUMN
+    };
 
 }
 

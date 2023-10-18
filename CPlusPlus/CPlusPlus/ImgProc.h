@@ -2,7 +2,7 @@
 #define _IMGPROC_H_
 
 #include "Core.h"
-#include "CustomerType"
+#include "Defines.h"
 
 namespace PZTIMAGE {
 
@@ -18,7 +18,7 @@ namespace PZTIMAGE {
 		static bool reduce_domain(PZTImage t_imgI, PZTRegions t_reg, PZTImage t_imgO);
 	
 		//
-		static bool select_shape(PZTRegions t_regI, PZTRegions t_regO, float t_min, float t_max); 
+		static bool select_shape(PZTRegions t_regI, PZTRegions t_regO, Features t_fea, float t_min, float t_max); 
 
 	};
 
