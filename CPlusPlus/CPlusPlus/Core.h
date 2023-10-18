@@ -19,7 +19,7 @@ namespace PZTIMAGE{
 	class PZTImage{
 	public:
 		PZTImage();
-		PZTImage(std::string t_fileName);
+		PZTImage(const std::string& t_fileName);
 		PZTImage(const PZTImage& t_other);
 		PZTImage& operator = (const PZTImage& t_other);
 		~PZTImage();
