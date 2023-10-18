@@ -3,6 +3,7 @@
 
 #include <opencv2/core.h>
 
+#include <string>
 #include <vector>
 
 namespace PZTIMAGE{
@@ -18,6 +19,7 @@ namespace PZTIMAGE{
 	class PZTImage{
 	public:
 		PZTImage();
+		PZTImage(std::string t_fileName);
 		PZTImage(const PZTImage& t_other);
 		PZTImage& operator = (const PZTImage& t_other);
 		~PZTImage();
