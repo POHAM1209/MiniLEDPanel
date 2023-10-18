@@ -129,6 +129,7 @@
   <ItemGroup>
     <ClInclude Include="Core.h" />
     <ClInclude Include="DefectDetection.h" />
+    <ClInclude Include="Defines.h" />
     <ClInclude Include="ImgProc.h" />
     <ClInclude Include="Test.h" />
   </ItemGroup>
