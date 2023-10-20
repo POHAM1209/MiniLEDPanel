@@ -71,7 +71,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\3rdParty\opencv-4.6.0-x64-mvsc;$(IncludePath)</IncludePath>
+    <IncludePath>..\3rdParty\opencv-4.6.0-x64-mvsc\include;$(IncludePath)</IncludePath>
     <ExternalIncludePath>$(ExternalIncludePath)</ExternalIncludePath>
     <LibraryPath>../3rdParty\opencv-4.6.0-x64-mvsc\vc17\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>

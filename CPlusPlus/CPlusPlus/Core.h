@@ -45,7 +45,7 @@ namespace PZTIMAGE{
 	class PZTRegions{
 	public:
 		PZTRegions();
-		PZTRegions(cv::InputArray t_regI);
+		PZTRegions(cv::InputArray t_regI); // 输入图片有问题
 		PZTRegions(const PZTRegions& t_other);
 		PZTRegions& operator= (const PZTRegions& t_other);
 		~PZTRegions();
@@ -60,7 +60,7 @@ namespace PZTIMAGE{
 		bool _UpdataRegionFeatures();
 	
 	private:
-		// CV_16U
+		// CV_16UC1
 		cv::Mat      					m_container;
 		//
 		unsigned int 					m_regNum;

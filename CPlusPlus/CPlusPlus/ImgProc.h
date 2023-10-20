@@ -6,11 +6,21 @@
 
 #include <string>
 
+#define PARAM_IN
+#define PARAM_OUT
+
 namespace PZTIMAGE {
 
 	class OperatorSet{
 	public:
 		//
+
+		/*
+		* brief :
+		* param[o]:
+		* param[i]:
+		* return :
+		*/
 		static bool read_image(PZTImage& t_imgO, std::string t_fileName);
 
 		// 
