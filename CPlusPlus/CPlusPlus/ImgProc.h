@@ -30,10 +30,10 @@ namespace PZTIMAGE {
 		static bool connection(PZTRegions t_reg, PZTRegions& t_regs);
 
 		//
-		static bool reduce_domain(PZTImage t_imgI, PZTRegions t_reg, PZTImage t_imgO);
+		static bool reduce_domain(PZTImage t_imgI, PZTRegions t_reg, PZTImage& t_imgO);
 	
 		//
-		static bool select_shape(PZTRegions t_regI, PZTRegions t_regO, Features t_fea, float t_min, float t_max); 
+		static bool select_shape(PZTRegions t_regI, PZTRegions& t_regO, Features t_fea, float t_min, float t_max); 
 
 	};
 
