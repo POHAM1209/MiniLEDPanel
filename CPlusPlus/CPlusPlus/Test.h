@@ -1,7 +1,12 @@
 #ifndef _TEST_H_
 #define _TEST_H_
+#include "learn.cpp"
+#include <chrono>  
 
-// ²âÊÔ
+using namespace cv;
+using namespace std;
+using namespace chrono;
+// Â²Ã¢ÃŠÃ”
 
 namespace PZTIMAGE {
 
