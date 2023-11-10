@@ -17,13 +17,16 @@ namespace PZTIMAGE {
 	// brief:
 	// 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	enum StructElement { STRUCTELEMENT_CIRCLE, STRUCTELEMENT_RECTANGLE };
+	enum StructElement { STRUCTELEMENT_RECTANGLE = 0, STRUCTELEMENT_CROSS, STRUCTELEMENT_CIRCLE };
 
 	typedef struct RegionFeature {
-		unsigned int 			m_area;
+		// !
+		double 					m_area;
+		double 					m_circularity;
 		unsigned int 			m_row;
-		unsigned int 			m_column;
-
+		unsigned int 			m_col;
+		float					m_outerRadius;
+		float					m_innerRadius;
 	}RegionFeature;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,7 +36,7 @@ namespace PZTIMAGE {
 	// m_mask copyTo
 	// cv::Mat::refcount refers to the shared memory.   
 	// PZTImage a = b; --> they(a, b) refer to the same memory.
-	// 
+	// existing problems: mult_image() do not think about float
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	class PZTRegions;
 
@@ -56,7 +59,7 @@ namespace PZTIMAGE {
 		* param0[o]: The height of an image.
 		* param1[o]: The width of an image.
 		*/
-		bool GetImageSize(unsigned int& t_imgRow, unsigned int& t_imgCol);
+		bool GetImageSize(unsigned int& t_imgRow, unsigned int& t_imgCol) const;
 
 		/* 
 		* brief    : Convert 3 images with one channel into a three-channel image.
@@ -101,8 +104,13 @@ namespace PZTIMAGE {
 	//	-- select_shape(region array)
 	//	-- union1(region array)
 	//	-- union2(region array)
+	// 
+	//  Q:
+	//		1. connection() return number of connected domain is wrong
+	//      2. GetRegionFeature()  findContour is wrong
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	class PZTRegions {
+		friend bool PZTImage::ReduceDomain(const PZTRegions& t_reg);
 	public:
 		PZTRegions();
 		PZTRegions(const PZTRegions& t_other);
@@ -117,7 +125,7 @@ namespace PZTIMAGE {
 	public:
 		/* 
 		* brief    : Return features of a connected domain.
-		* param0[i]: The index of connected domain.
+		* param0[i]: The index of connected domaim. It starts from scratch.
 		*/
 		RegionFeature GetRegionFeature(unsigned int t_index);
 
@@ -131,11 +139,20 @@ namespace PZTIMAGE {
 		*/
 		bool Disconnection();
 
+		bool FillUp();
+
 		/*
-		* brief    : Erode a region
+		* brief    : Erode a region. By the way, m_regionNum must be 1.
 		* param0[i]: Structuring element, such as rectangle, circle.
+		* param1[i]: The size of Structuring element, such as 3×3、5×5、7×7.
 		*/
-		bool Erosion(StructElement t_elm);
+		bool Erosion(StructElement t_elm, unsigned int t_kernelLen = 3);
+
+		/*
+		* brief    : Get the class member(m_regionNum)
+		*/
+		unsigned int GetRegionNum();
+
 
 	private:
 		bool _UpdataRegionNum();
@@ -143,9 +160,19 @@ namespace PZTIMAGE {
 		bool _UpdataRegions();
 
 	private:
-		// Mat::flags is CV_8UC1
+		/* ! The data container. There are followed details.
+			   -- 1 channel, 8 bit. (equals to CV_8UC1)
+			   -- The grayscale value from the pixel in the i-th connected domain equals to i, 
+			      and value '0' represents background.
+		*/
 		cv::Mat											m_regions;
+
+		/* ! pointer to the features. There are followed details. 
+			   -- 
+		*/
 		std::shared_ptr<std::vector<RegionFeature>>		m_featuresPtr;
+
+		// ! the number of connected domains
 		unsigned int 									m_regionNum;
 	};
 
