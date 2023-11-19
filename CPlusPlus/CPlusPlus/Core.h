@@ -1,6 +1,8 @@
 #ifndef _CORE_H_
 #define _CORE_H_
 
+#include "Defines.h"
+
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
@@ -46,7 +48,8 @@ namespace PZTIMAGE {
 		PZTImage();
 		PZTImage(const PZTImage& t_other);
 		PZTImage& operator = (const PZTImage& t_other);
-		~PZTImage();
+		PZTImage& operator = (PZTImage&& t_other);
+ 		~PZTImage();
 
 		/* 
 		* param0[i]: The path of the image to be read.
@@ -54,6 +57,11 @@ namespace PZTIMAGE {
 		PZTImage(const std::string& t_filePath);
 		
 	public:
+		/* 
+		* brief    : Determine whether the object is empty.
+		*/
+		bool Empty() const;
+
 		/* 
 		* brief    : Return the size of an image.
 		* param0[o]: The height of an image.
@@ -106,14 +114,16 @@ namespace PZTIMAGE {
 	//	-- union2(region array)
 	// 
 	//  Q:
-	//		1. connection() return number of connected domain is wrong
-	//      2. GetRegionFeature()  findContour is wrong
+	//		1. m_featuresPtr在特殊情况报异常   m_featurePtr初始化nullptr，但调用GetRegionFeature()，再创建指针。
+	//   	当 m_featurePtr为非 nullptr 的对象构造/赋值，感觉需要额外的成员变量记录是否被修改。
+	//
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	class PZTRegions {
 		friend bool PZTImage::ReduceDomain(const PZTRegions& t_reg);
 	public:
 		PZTRegions();
 		PZTRegions(const PZTRegions& t_other);
+		PZTRegions(PZTRegions&& t_other);
 		PZTRegions& operator= (const PZTRegions& t_other);
 		~PZTRegions();
 
@@ -122,12 +132,31 @@ namespace PZTIMAGE {
 		*/
 		PZTRegions(cv::Mat t_reg);
 
+		/*
+		* param0[i]: The reference template.
+		* param1[i]: The index set of region from the input of PZTRegion object.
+		*/
+		PZTRegions(const PZTRegions& t_reg, const std::vector<uint32_t>& t_indexs);
+
 	public:
+		/* 
+		* brief    : Determine whether the object is empty.
+		*/
+		bool Empty() const;
+
 		/* 
 		* brief    : Return features of a connected domain.
 		* param0[i]: The index of connected domaim. It starts from scratch.
 		*/
 		RegionFeature GetRegionFeature(unsigned int t_index);
+
+		/* 
+		* brief    : Return specific feature of a connected domain.
+		* param0[i]: The index of connected domaim. It starts from scratch.
+		* param1[i]: Shape features to be checked.
+		* return   : The value of feature.
+		*/
+		double GetRegionFeature(unsigned int t_index, FeatureType t_type);
 
 		/*
 		* brief    : Compute connected components of a region.
@@ -139,10 +168,13 @@ namespace PZTIMAGE {
 		*/
 		bool Disconnection();
 
+		/*
+		* brief    : Fill up holes in one region. *** m_regionNum must be 1 ***
+		*/
 		bool FillUp();
 
 		/*
-		* brief    : Erode a region. By the way, m_regionNum must be 1.
+		* brief    : Erode a region. *** m_regionNum must be 1 ***
 		* param0[i]: Structuring element, such as rectangle, circle.
 		* param1[i]: The size of Structuring element, such as 3×3、5×5、7×7.
 		*/
@@ -151,13 +183,19 @@ namespace PZTIMAGE {
 		/*
 		* brief    : Get the class member(m_regionNum)
 		*/
-		unsigned int GetRegionNum();
+		unsigned int GetRegionNum() const;
 
+		void DisplayRegion();
 
 	private:
 		bool _UpdataRegionNum();
 		bool _UpdataRegionFeatures();
 		bool _UpdataRegions();
+
+
+		bool _UpdataRegionsFeaturesV2();
+		RegionFeature _GainOneRegionFeatures(cv::InputArray t_oneRegion);
+
 
 	private:
 		/* ! The data container. There are followed details.
@@ -172,8 +210,11 @@ namespace PZTIMAGE {
 		*/
 		std::shared_ptr<std::vector<RegionFeature>>		m_featuresPtr;
 
-		// ! the number of connected domains
+		// ! the number of connected domains.
 		unsigned int 									m_regionNum;
+
+		// ! It represents whether m_regions has changed by some operators
+		bool											m_isRegionChanged;
 	};
 
 	bool TestCore();

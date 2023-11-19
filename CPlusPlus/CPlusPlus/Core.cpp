@@ -25,8 +25,18 @@ namespace PZTIMAGE {
 		return *this;
 	}
 
+	PZTImage& PZTImage::operator = (PZTImage&& t_other){
+		m_image = t_other.m_image;
+		m_mask = t_other.m_mask;
+		return *this;
+	}
+
 	PZTImage::~PZTImage(){
 	
+	}
+
+	bool PZTImage::Empty() const{
+		return m_image.empty();
 	}
 
 	bool PZTImage::GetImageSize(unsigned int& t_imgRow, unsigned int& t_imgCol) const{
@@ -93,33 +103,107 @@ namespace PZTIMAGE {
 	// PZTRegions
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	PZTRegions::PZTRegions():
-		m_regionNum(0)
+		m_regions(),
+		m_featuresPtr(nullptr),
+		m_regionNum(0),
+		m_isRegionChanged(false)
 	{
 		
 	}
 
 	PZTRegions::PZTRegions(cv::Mat t_reg) :
-		m_regionNum(0)
+		m_featuresPtr(nullptr),
+		m_isRegionChanged(false)
 	{
 		// confirm t_rg
 		if(t_reg.type() != CV_8UC1)
 			return;
 
-		m_regions = t_reg;
+		m_regions = t_reg.clone();
 		_UpdataRegionNum();
-		m_featuresPtr = std::make_shared<std::vector<PZTIMAGE::RegionFeature>>(m_regionNum);
 	}
 
-	PZTRegions::PZTRegions(const PZTRegions& t_other) {
-		m_regions = t_other.m_regions;
-		m_featuresPtr = t_other.m_featuresPtr;
+	PZTRegions::PZTRegions(const PZTRegions& t_reg, const std::vector<uint32_t>& t_indexs) : 
+		m_regions(),
+		m_featuresPtr(nullptr),
+		m_regionNum(0),
+		m_isRegionChanged(false)
+	{
+		// confirm t_reg and t_indexs
+		if(t_reg.Empty())
+			return;
+
+		uint32_t regNum = t_reg.GetRegionNum();
+		uint32_t maxIdx = *(std::max_element(t_indexs.begin(), t_indexs.end()));
+		if(maxIdx > regNum)
+			return;
+
+		// updata m_regionNum
+		m_regionNum = t_indexs.size();
+
+		// updata m_regions and m_featuresPtr
+		cv::Mat tmp;
+		uint32_t index = 0, idx = 0;
+		m_regions = cv::Mat::zeros(t_reg.m_regions.rows, t_reg.m_regions.cols, CV_8UC1);
+		if(t_reg.m_featuresPtr != nullptr){
+
+			m_featuresPtr = std::make_shared<std::vector<RegionFeature>>();
+			m_featuresPtr->reserve(m_regionNum);
+
+			for(idx = 0; idx < m_regionNum; ++idx){
+				index = t_indexs[idx];
+				m_featuresPtr->push_back( (*t_reg.m_featuresPtr)[index] );
+				cv::inRange(t_reg.m_regions, cv::Scalar(index + 1), cv::Scalar(index + 1), tmp);
+				tmp = tmp - 255 + index + 1;		
+				m_regions += tmp;
+			}
+
+		}else{
+
+			for(idx = 0; idx < m_regionNum; ++idx){
+				index = t_indexs[idx];
+				cv::inRange(t_reg.m_regions, cv::Scalar(index + 1), cv::Scalar(index + 1), tmp);
+				tmp = tmp - 255 + index + 1;
+				m_regions += tmp;
+			}
+		}
+
+	}
+
+	PZTRegions::PZTRegions(const PZTRegions& t_other){
+		m_regions = t_other.m_regions.clone();
+
+		if(t_other.m_featuresPtr == nullptr)
+			m_featuresPtr = nullptr;
+		else
+			m_featuresPtr = t_other.m_featuresPtr;
+
 		m_regionNum = t_other.m_regionNum;
+		m_isRegionChanged = false;
+	}
+
+	PZTRegions::PZTRegions(PZTRegions&& t_other){
+		m_regions = t_other.m_regions;
+
+		if(t_other.m_featuresPtr == nullptr)
+			m_featuresPtr = nullptr;
+		else
+			m_featuresPtr = t_other.m_featuresPtr;
+		
+		m_regionNum = t_other.m_regionNum;
+		m_isRegionChanged = false;
 	}
 
 	PZTRegions& PZTRegions::operator= (const PZTRegions& t_other) {
-		m_regions = t_other.m_regions;
-		m_featuresPtr = t_other.m_featuresPtr;
+		m_regions = t_other.m_regions.clone();
+
+		if(t_other.m_featuresPtr == nullptr)
+			m_featuresPtr = nullptr;
+		else
+			m_featuresPtr = t_other.m_featuresPtr;
+		
 		m_regionNum = t_other.m_regionNum;
+		m_isRegionChanged = false;
 
 		return *this;
 	}
@@ -128,26 +212,70 @@ namespace PZTIMAGE {
 
 	}
 
-	RegionFeature PZTRegions::GetRegionFeature(unsigned int t_index) {
+	bool PZTRegions::Empty() const{
+		return m_regions.empty();
+	}
+
+	RegionFeature PZTRegions::GetRegionFeature(unsigned int t_index){
 		// confirm t_index
 		if(t_index > m_regionNum)
 			return RegionFeature();
 
-		int size = m_featuresPtr->size();
-		if(size == 0 || size != m_regionNum)
+		// That m_featuresPtr is nullptr represents no objects in the container of feature, and 
+		// that m_isRegionChanged is true represents that the shared pointer(m_featuresPtr) is invalid.
+		if(m_featuresPtr == nullptr || m_isRegionChanged){
+			m_featuresPtr = std::make_shared<std::vector<PZTIMAGE::RegionFeature>>(); 
+			m_featuresPtr->reserve(m_regionNum);
+		}
+
+		// Whether updata the container of feature
+		if(m_featuresPtr->size() == 0 || m_isRegionChanged){
 			if(!_UpdataRegionFeatures())
 				return RegionFeature();
+		}
+		m_isRegionChanged = false;
 
-		return (*m_featuresPtr)[t_index];
+		return (*m_featuresPtr)[t_index];		
+	}
+
+	double PZTRegions::GetRegionFeature(unsigned int t_index, FeatureType t_type){
+		// confirm t_index
+		if(t_index > m_regionNum)
+			return 0;
+		
+		if(m_featuresPtr == nullptr || m_isRegionChanged){
+			m_featuresPtr = std::make_shared<std::vector<PZTIMAGE::RegionFeature>>();
+			m_featuresPtr->reserve(m_regionNum);
+		}
+			
+
+		if(m_featuresPtr->size() == 0 || m_isRegionChanged){
+			if(!_UpdataRegionFeatures())
+				return 0;
+		}
+		m_isRegionChanged = false;
+
+		RegionFeature value = (*m_featuresPtr)[t_index];
+		double res;
+		switch(t_type){
+			case FEATURETYPE_AREA: 			res = value.m_area; break;
+			case FEATURETYPE_CIRCULARITY: 	res = value.m_circularity; break;
+			case FEATURETYPE_ROW: 			res = value.m_row; break;
+			case FEATURETYPE_COL: 			res = value.m_col; break;
+		default:
+			res = 0; break;
+		}
+
+		return res;
 	}
 
 	bool PZTRegions::Connection() {
+		if(m_regionNum == 0)
+			return true;
+
 		// confirm m_regions
 		if(m_regions.empty())
 			return false;
-
-		if(m_regionNum == 0)
-			return true;
 
 		if(!Disconnection())
 			return false;
@@ -160,42 +288,61 @@ namespace PZTIMAGE {
 		else{
 			tmp16.convertTo(m_regions, CV_8UC1);
 			m_regionNum = regionNum - 1;
+			m_isRegionChanged = true;
 			return true;
 		}
 	}
 
 	bool PZTRegions::Disconnection(){
+		if(m_regionNum == 1 || m_regionNum == 0)
+			return true;
+
 		// confirm m_regions
 		if(m_regions.empty())
 			return false;
 		
 		cv::threshold(m_regions, m_regions, 0, 1, cv::THRESH_BINARY);
-
-		cv::Scalar value = cv::sum(m_regions);
-		if((long long)value[0] == 0) // Exception: maybe overflow.
-			m_regionNum = 0;
-		else
-			m_regionNum = 1;
-
+		m_regionNum = 1;
+		m_isRegionChanged = true;
+			
 		return true;
 	}
 
 	bool PZTRegions::FillUp() {
+		if(m_regionNum == 0)
+			return true;
+
+		// confirm m_regions and m_regionNum
+		if(m_regions.empty() || m_regionNum != 1)
+			return false;
+		
+		std::vector<std::vector<cv::Point>> contours;
+		cv::findContours(m_regions, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE); // gain external contours
+		cv::drawContours(m_regions, contours, -1, cv::Scalar(1), cv::FILLED);
+
+		m_isRegionChanged = true;
+
 		return true;
 	}
 
 	bool PZTRegions::Erosion(StructElement t_elm, unsigned int t_kernelLen){
-		// confirm m_regionNum
-		if(m_regionNum > 1)
+		if(m_regionNum == 0)
+			return true;
+
+		// confirm m_regions and m_regionNum
+		if(m_regions.empty() || m_regionNum != 1)
 			return false;
 
-		cv::Mat kernel = cv::getStructuringElement(static_cast<cv::MorphShapes>(t_elm), cv::Size(t_kernelLen, t_kernelLen));
+		unsigned int kernelLen = t_kernelLen | 0x00000001;
+		cv::Mat kernel = cv::getStructuringElement(static_cast<cv::MorphShapes>(t_elm), cv::Size(kernelLen, kernelLen));
 		cv::erode(m_regions, m_regions, kernel);
+
+		m_isRegionChanged = true;
 
 		return true;
 	}
 
-	unsigned int PZTRegions::GetRegionNum(){
+	unsigned int PZTRegions::GetRegionNum() const{
 		return m_regionNum;
 	}
 
@@ -205,6 +352,11 @@ namespace PZTIMAGE {
 		m_regionNum = maxValue;
 		
 		return true;
+	}
+
+	void PZTRegions::DisplayRegion(){
+		cv::imshow("m_regions", m_regions);
+		cv::waitKey(0);
 	}
 
 	bool PZTRegions::_UpdataRegionFeatures(){
@@ -247,28 +399,75 @@ namespace PZTIMAGE {
 		return true;
 	}
 
+	bool PZTRegions::_UpdataRegionsFeaturesV2(){
+		m_featuresPtr->clear();
+		m_featuresPtr->reserve(m_regionNum);
+
+		// ...
+		cv::Mat oneRegion;
+		RegionFeature trait;
+		for(unsigned int idx = 1; idx <= m_regionNum; ++idx){
+			// 获得每个连通域
+			oneRegion = m_regions - idx;
+			cv::threshold(oneRegion, oneRegion, 0, 1, cv::THRESH_BINARY_INV);
+
+			// _UpdataOneRegionFeatures
+			trait = _GainOneRegionFeatures(oneRegion);
+
+			m_featuresPtr->push_back(trait);
+		}
+
+		return true;
+	}
+
+	RegionFeature PZTRegions::_GainOneRegionFeatures(cv::InputArray t_oneRegion){
+		cv::Mat oneRegion = t_oneRegion.getMat();
+
+		RegionFeature trait;
+
+		cv::Moments moms = cv::moments(t_oneRegion);
+
+		// features--area
+		// trait.m_area = (cv::sum(oneRegion))[0];
+		trait.m_area = moms.m00;
+
+		// features--col
+		trait.m_col = moms.m10 / moms.m00;
+
+		// features--row
+		trait.m_row = moms.m01 / moms.m00;
+
+		return RegionFeature();
+	}
+
 	bool PZTRegions::_UpdataRegions(){
 		//cv::threshold(m_regions, )
 
 		return false;
 	}
+
+
 	
 	bool TestCore() {
 		bool res = false;
 
-		PZTImage img("./domain.jpg");
-		res = img.RGB2Gray();
+		// 测试 PZTRegion 构造函数
 
-		cv::Mat label;
-		cv::Mat image = cv::imread("./domain.jpg");
-		cv::cvtColor(image, image, cv::COLOR_RGB2GRAY);
-		cv::threshold(image, label, 100, 1, cv::THRESH_BINARY);
+		cv::Mat reg = cv::imread("./connectedDomain.jpg");
+		cv::cvtColor(reg, reg, cv::COLOR_RGB2GRAY);
 
-		PZTIMAGE::PZTRegions reg(label);
+		cv::threshold(reg, reg, 100, 1, cv::THRESH_BINARY);
 
-		reg.Connection();
+		PZTRegions obj(reg);
+		//obj.DisplayRegion();
 
-		auto tmp = reg.GetRegionFeature(0);
+		obj.Connection();
+		//obj.DisplayRegion();
+
+		RegionFeature feature = obj.GetRegionFeature(0);
+
+
+		PZTRegions obj1(obj, std::vector<uint32_t>{0, 2});
 
 		return res;
 	}
