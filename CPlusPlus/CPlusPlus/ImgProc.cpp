@@ -1,17 +1,17 @@
-#include "ImgProc.h"
+ï»¿#include "ImgProc.h"
 
 namespace PZTIMAGE {
 
-	/*brief:¶ÁÈ¡Í¼Æ¬
-	* param0[o]:¶ÁÈ¡µ½µÄÍ¼Æ¬		ÈÎÒâÍ¨µÀÊıÍ¼Ïñ
-	* param1[i]:Í¼Æ¬Â·¾¶			string
+	/*brief:è¯»å–å›¾ç‰‡
+	* param0[o]:è¯»å–åˆ°çš„å›¾ç‰‡		ä»»æ„é€šé“æ•°å›¾åƒ
+	* param1[i]:å›¾ç‰‡è·¯å¾„			string
 	*/
 	bool OperatorSet::read_image(PZTImage& t_imgO, std::string t_fileName) {
 		bool res = true;
 		if (t_fileName.empty())
 			return false;
-		PZTImage readimage(t_fileName);					//ÀûÓÃÎÄ¼şÃû¹¹Ôìº¯Êı£¬¶ÁÈ¡Í¼Ïñ
-		t_imgO = readimage;								//Êä³ö
+		PZTImage readimage(t_fileName);					//åˆ©ç”¨æ–‡ä»¶åæ„é€ å‡½æ•°ï¼Œè¯»å–å›¾åƒ
+		t_imgO = readimage;								//è¾“å‡º
 		return res;
 	}
 
@@ -30,11 +30,11 @@ namespace PZTIMAGE {
 		return res;
 	}
 
-	/*brief:ãĞÖµ·Ö¸î
-	* param0[i]:ÊäÈëimage			»Ò¶ÈÍ¼Ïñ
-	* param1[o]:Êä³öregion			¶şÖµ»¯Í¼Ïñ£¬0»òÕß255
-	* param2[i]:×îĞ¡ãĞÖµ
-	* param3[i]:×î´óãĞÖµ
+	/*brief:é˜ˆå€¼åˆ†å‰²
+	* param0[i]:è¾“å…¥image			ç°åº¦å›¾åƒ
+	* param1[o]:è¾“å‡ºregion			äºŒå€¼åŒ–å›¾åƒï¼Œ0æˆ–è€…255
+	* param2[i]:æœ€å°é˜ˆå€¼
+	* param3[i]:æœ€å¤§é˜ˆå€¼
 	*/
 	bool OperatorSet::threshold(PZTImage t_imgI, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray) {
 		bool res = true;
@@ -46,34 +46,34 @@ namespace PZTIMAGE {
 
 		cv::Mat i_image = t_imgI.m_mask;
 		cv::Mat o_image;
-		cv::threshold(i_image, o_image, t_minGray, t_maxGray, cv::THRESH_BINARY);	//ãĞÖµ·Ö¸î£¬·Ö¸îºóÁ¬Í¨ÓòÖ»ÓĞÒ»ÖÖ
-		PZTRegions o_region(o_image);												//ÀûÓÃÍ¼Ïñ¹¹Ôìregion£¬µÃµ½ãĞÖµ·Ö¸î½á¹ûÍ¼Ïñ
-		t_reg = o_region;															//Êä³ö
+		cv::threshold(i_image, o_image, t_minGray, t_maxGray, cv::THRESH_BINARY);	//é˜ˆå€¼åˆ†å‰²ï¼Œåˆ†å‰²åè¿é€šåŸŸåªæœ‰ä¸€ç§
+		PZTRegions o_region(o_image);												//åˆ©ç”¨å›¾åƒæ„é€ regionï¼Œå¾—åˆ°é˜ˆå€¼åˆ†å‰²ç»“æœå›¾åƒ
+		t_reg = o_region;															//è¾“å‡º
 		
 		return res;
 	}
 
-	/*brief:Á¬Í¨Óò·Ö¸î
-	* param0[i]:ÊäÈëregion
-	* param1[o]:Êä³öregion(Á¬Í¨Óò·Ö¿ª)
+	/*brief:è¿é€šåŸŸåˆ†å‰²
+	* param0[i]:è¾“å…¥region
+	* param1[o]:è¾“å‡ºregion(è¿é€šåŸŸåˆ†å¼€)
 	*/
 	bool OperatorSet::connection(PZTRegions t_reg, PZTRegions& t_regs) {
 		bool res = true;
 
-		t_reg.Connection();				//Á¬Í¨Óò·Ö¸î£¬ÒÑµÃµ½m_regionNum,m_regions£¬È±ÉÙm_feature
+		t_reg.Connection();				//è¿é€šåŸŸåˆ†å‰²ï¼Œå·²å¾—åˆ°m_regionNum,m_regionsï¼Œç¼ºå°‘m_feature
 		for (int i = 0; i < t_reg.GetRegionNum(); i++)
 		{
-			//ĞèÒª±äÁ¿À´½ÓÊÕ£¬»¹ÊÇÖ±½ÓÔÚº¯ÊıÀï¸ÄÁË? 
+			//éœ€è¦å˜é‡æ¥æ¥æ”¶ï¼Œè¿˜æ˜¯ç›´æ¥åœ¨å‡½æ•°é‡Œæ”¹äº†? 
 			t_reg.GetRegionFeature(i);
 		}
-		t_regs = t_reg;					//Êä³ö
+		t_regs = t_reg;					//è¾“å‡º
 		return res;
 	}
 
-	/*brief:ÔÚimageÉÏ¼õÈ¥region
-	* param0[i]:ÊäÈëimage
-	* param1[i]:ÊäÈëregion
-	* param2[o]:Êä³öimage
+	/*brief:åœ¨imageä¸Šå‡å»region
+	* param0[i]:è¾“å…¥image
+	* param1[i]:è¾“å…¥region
+	* param2[o]:è¾“å‡ºimage
 	*/
 	bool OperatorSet::reduce_domain(PZTImage t_imgI, PZTRegions t_reg, PZTImage& t_imgO) {
 		bool res = true;
@@ -83,81 +83,81 @@ namespace PZTIMAGE {
 		if (t_imgI.m_image.type() == CV_8UC3)
 			return false;
 
-		//×ö·¨£º·µ»Øimage£¬ËùÒÔÖ±½ÓcontainerÏà¼õ£¿µÈÓÚÊÇ¾ØÕóÏà¼õ
+		//åšæ³•ï¼šè¿”å›imageï¼Œæ‰€ä»¥ç›´æ¥containerç›¸å‡ï¼Ÿç­‰äºæ˜¯çŸ©é˜µç›¸å‡
 		t_imgI.ReduceDomain(t_reg);
 		t_imgO = t_imgI;
 		return res;
 	}
 
-	/*brief:°´ÕÕĞÎ×´ÌØÕ÷Ñ¡Ôñ½á¹û
-	* param0[i]:ÊäÈëregion£¬Ò»°ãÎªconnectionºóµÄregion
-	* param1[o]:Êä³öregion
-	* param2[i]:ÊäÈëÌØÕ÷ÀàĞÍ(ÒÔÊ²Ã´ÌØÕ÷Ñ¡Ôñ)
-	* param3[i]:×îĞ¡·¶Î§
-	* param4[i]:×î´ó·¶Î§
+	/*brief:æŒ‰ç…§å½¢çŠ¶ç‰¹å¾é€‰æ‹©ç»“æœ
+	* param0[i]:è¾“å…¥regionï¼Œä¸€èˆ¬ä¸ºconnectionåçš„region
+	* param1[o]:è¾“å‡ºregion
+	* param2[i]:è¾“å…¥ç‰¹å¾ç±»å‹(ä»¥ä»€ä¹ˆç‰¹å¾é€‰æ‹©)
+	* param3[i]:æœ€å°èŒƒå›´
+	* param4[i]:æœ€å¤§èŒƒå›´
 	*/
 	bool OperatorSet::select_shape(PZTRegions t_regI, PZTRegions& t_regO, Features t_fea, float t_min, float t_max) {
 		bool res = true;
 
-		//²»ÄÜÓÃregionÀ´ÅĞ¶Ï¿Õ
+		//ä¸èƒ½ç”¨regionæ¥åˆ¤æ–­ç©º
 		//if (t_regI.m_regions.empty())
 		//	return false;
 
 		int num = t_regI.GetRegionNum();
 		if (t_fea == FEATURES_AREA)
 		{
-			//×ö·¨£º±éÀúregionÁ¬Í¨Óò£¬²¢¼ÆËãÃæ»ı
-			//ÎÊÌâ£ºÃæ»ı²»ÔÚÒªÇóÄÚµÄÁ¬Í¨Óò»Ò¶ÈÖµ¸³0
-			for (int i = 1; i < num; i++)//0ÊÇ±³¾°£¿ÊÇ´Ó0»¹ÊÇ´Ó1¿ªÊ¼±éÀú
+			//åšæ³•ï¼šéå†regionè¿é€šåŸŸï¼Œå¹¶è®¡ç®—é¢ç§¯
+			//é—®é¢˜ï¼šé¢ç§¯ä¸åœ¨è¦æ±‚å†…çš„è¿é€šåŸŸç°åº¦å€¼èµ‹0
+			for (int i = 1; i < num; i++)//0æ˜¯èƒŒæ™¯ï¼Ÿæ˜¯ä»0è¿˜æ˜¯ä»1å¼€å§‹éå†
 			{
 				RegionFeature regf = t_regI.GetRegionFeature(i);
 				if (regf.m_area >= t_min && regf.m_area <= t_max)
 					continue;
 				else
 				{
-					//ÈçºÎ½«²»·ûºÏµÄ»Ò¶ÈÖµÖÃ0? ÔõÃ´ÄÃµ½regionÎ»ÖÃÀ´ÖÃ0?
+					//å¦‚ä½•å°†ä¸ç¬¦åˆçš„ç°åº¦å€¼ç½®0? æ€ä¹ˆæ‹¿åˆ°regionä½ç½®æ¥ç½®0?
 
 				}
 			}
 		}
 		else if (t_fea == FEATURES_CIRCULARITY)
 		{
-			for (int i = 1; i < num; i++)//0ÊÇ±³¾°£¿ÊÇ´Ó0»¹ÊÇ´Ó1¿ªÊ¼±éÀú
+			for (int i = 1; i < num; i++)//0æ˜¯èƒŒæ™¯ï¼Ÿæ˜¯ä»0è¿˜æ˜¯ä»1å¼€å§‹éå†
 			{
 				RegionFeature regf = t_regI.GetRegionFeature(i);
 				if (regf.m_circularity >= t_min && regf.m_circularity <= t_max)
 					continue;
 				else
 				{
-					//ÈçºÎ½«²»·ûºÏµÄ»Ò¶ÈÖµÖÃ0? how to set the value of unmatched pixel to 0; 
+					//å¦‚ä½•å°†ä¸ç¬¦åˆçš„ç°åº¦å€¼ç½®0? how to set the value of unmatched pixel to 0; 
 
 				}
 			}
 		}
 		else if (t_fea == FEATURES_ROW)
 		{
-			for (int i = 1; i < num; i++)//0ÊÇ±³¾°£¿ÊÇ´Ó0»¹ÊÇ´Ó1¿ªÊ¼±éÀú
+			for (int i = 1; i < num; i++)//0æ˜¯èƒŒæ™¯ï¼Ÿæ˜¯ä»0è¿˜æ˜¯ä»1å¼€å§‹éå†
 			{
 				RegionFeature regf = t_regI.GetRegionFeature(i);
 				if (regf.m_row >= t_min && regf.m_row <= t_max)
 					continue;
 				else
 				{
-					//ÈçºÎ½«²»·ûºÏµÄ»Ò¶ÈÖµÖÃ0? how to set the value of unmatched pixel to 0; 
+					//å¦‚ä½•å°†ä¸ç¬¦åˆçš„ç°åº¦å€¼ç½®0? how to set the value of unmatched pixel to 0; 
 
 				}
 			}
 		}
 		else if (t_fea == FEATURES_COLUMN)
 		{
-			for (int i = 1; i < num; i++)//0ÊÇ±³¾°£¿ÊÇ´Ó0»¹ÊÇ´Ó1¿ªÊ¼±éÀú
+			for (int i = 1; i < num; i++)//0æ˜¯èƒŒæ™¯ï¼Ÿæ˜¯ä»0è¿˜æ˜¯ä»1å¼€å§‹éå†
 			{
 				RegionFeature regf = t_regI.GetRegionFeature(i);
 				if (regf.m_col >= t_min && regf.m_col <= t_max)
 					continue;
 				else
 				{
-					//ÈçºÎ½«²»·ûºÏµÄ»Ò¶ÈÖµÖÃ0? how to set the value of unmatched pixel to 0; 
+					//å¦‚ä½•å°†ä¸ç¬¦åˆçš„ç°åº¦å€¼ç½®0? how to set the value of unmatched pixel to 0; 
 
 				}
 			}
@@ -170,12 +170,12 @@ namespace PZTIMAGE {
 		return res;
 	}
 
-	/*brief:ÔöÇ¿Í¼Æ¬¶Ô±È¶È
-	* param0[i]:ÊäÈëÍ¼Æ¬
-	* param1[o]:Êä³öÍ¼Æ¬
-	* param2[i]:mask³¤
-	* param3[i]:mask¿í
-	* param4[i]:ÔöÇ¿Ç¿¶È
+	/*brief:å¢å¼ºå›¾ç‰‡å¯¹æ¯”åº¦
+	* param0[i]:è¾“å…¥å›¾ç‰‡
+	* param1[o]:è¾“å‡ºå›¾ç‰‡
+	* param2[i]:maské•¿
+	* param3[i]:maskå®½
+	* param4[i]:å¢å¼ºå¼ºåº¦
 	*/
 	bool OperatorSet::emphasize(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight, uint8_t Factor) {
 		bool res = true;
@@ -185,11 +185,11 @@ namespace PZTIMAGE {
 		if (t_imgI.m_image.type() == CV_8UC3)
 			return false;
 
-		//¹«Ê½res := round((orig - mean) * Factor) + orig
-		//µÈ¼ÛÓÚÔÚMaskHeight¡¢MaskWidthµÄ¿Õ¼äÄÚÖĞĞÄ»¯ºóÔö¼Ó·½²î
+		//å…¬å¼res := round((orig - mean) * Factor) + orig
+		//ç­‰ä»·äºåœ¨MaskHeightã€MaskWidthçš„ç©ºé—´å†…ä¸­å¿ƒåŒ–åå¢åŠ æ–¹å·®
 		cv::Mat mean;
 
-		//ÒÔµ¥Í¨µÀÎª×¼£¬m_mask
+		//ä»¥å•é€šé“ä¸ºå‡†ï¼Œm_mask
 		for (int i = 0; i < t_imgI.m_image.rows; i++)
 		{
 			const uchar* rptr = t_imgI.m_image.ptr<uchar>(i);
@@ -204,11 +204,11 @@ namespace PZTIMAGE {
 		return res;
 	}
 
-	/*brief:»Ò¶ÈÔöÇ¿
-	* param0[i]:ÊäÈëÍ¼Æ¬
-	* param1[o]:Êä³öÍ¼Æ¬
-	* param2[i]:mask³¤
-	* param3[i]:mask¿í
+	/*brief:ç°åº¦å¢å¼º
+	* param0[i]:è¾“å…¥å›¾ç‰‡
+	* param1[o]:è¾“å‡ºå›¾ç‰‡
+	* param2[i]:maské•¿
+	* param3[i]:maskå®½
 	*/
 	bool OperatorSet::gray_range_rect(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight)
 	{
@@ -219,14 +219,14 @@ namespace PZTIMAGE {
 		if (t_imgI.m_image.type() == CV_8UC3)
 			return false;
 
-		//Í¼Ïñ±ß½çÀ©³ä
+		//å›¾åƒè¾¹ç•Œæ‰©å……
 		int hh = (t_MaskHeight - 1) / 2;
 		int hw = (t_MaskWidth - 1) / 2;
 		cv::Mat Newsrc;
-		cv::copyMakeBorder(t_imgI.m_mask, Newsrc, hh, hh, hw, hw, cv::BORDER_REFLECT_101);//ÒÔ±ßÔµÎªÖá£¬¶Ô³Æ
+		cv::copyMakeBorder(t_imgI.m_mask, Newsrc, hh, hh, hw, hw, cv::BORDER_REFLECT_101);//ä»¥è¾¹ç¼˜ä¸ºè½´ï¼Œå¯¹ç§°
 		t_imgO.m_mask= cv::Mat::zeros(t_imgI.m_mask.rows, t_imgI.m_mask.cols, t_imgI.m_mask.type());
 
-		//±éÀúÍ¼Ïñ
+		//éå†å›¾åƒ
 		for (int i = 0; i < t_imgI.m_mask.rows; i++)
 		{
 			for (int j = 0; j < t_imgI.m_mask.cols; j++)
