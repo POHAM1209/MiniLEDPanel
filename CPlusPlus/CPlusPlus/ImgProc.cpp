@@ -69,9 +69,10 @@ namespace PZTIMAGE {
 			//做法：遍历region连通域，并计算面积
 			//面积不在要求内的连通域灰度值赋0
 			//问题：怎么计算面积？
-			for (i = 0; i < t_regI.m_FeatureNum; i++)
+			//for (i = 0; i < t_regI.m_FeatureNum; i++)
+			for (int i = 0; i < t_regI.GetRegionNum(); i++)
 			{
-				RegionFeature i = t_regI.GetRegionFeature(i);
+				RegionFeature ii = t_regI.GetRegionFeature(i);
 			}
 		}
 		else if (t_fea == FEATURES_CIRCULARITY)
@@ -142,7 +143,6 @@ namespace PZTIMAGE {
 
 		return res;
 	}
-
 
 
 	bool TestImgProc() {
