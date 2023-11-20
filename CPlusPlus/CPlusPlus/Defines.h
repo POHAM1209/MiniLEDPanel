@@ -10,6 +10,14 @@ namespace PZTIMAGE{
 		FEATURES_COLUMN
     };
 
+
+	
+
+	///////////////////////////////////////////////////////////
+	// POMAH
+	enum FeatureType {FEATURETYPE_AREA = 0, FEATURETYPE_CIRCULARITY, FEATURETYPE_ROW, FEATURETYPE_COL};
+
+
 }
 
 

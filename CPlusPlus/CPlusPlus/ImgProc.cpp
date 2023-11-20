@@ -10,8 +10,10 @@ namespace PZTIMAGE {
 		bool res = true;
 		if (t_fileName.empty())
 			return false;
+
 		PZTImage readimage(t_fileName);					//利用文件名构造函数，读取图像
 		t_imgO = readimage;								//输出
+
 		return res;
 	}
 
@@ -35,6 +37,7 @@ namespace PZTIMAGE {
 	* param1[o]:输出region			二值化图像，0或者255
 	* param2[i]:最小阈值
 	* param3[i]:最大阈值
+
 	*/
 	bool OperatorSet::threshold(PZTImage t_imgI, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray) {
 		bool res = true;
@@ -46,9 +49,11 @@ namespace PZTIMAGE {
 
 		cv::Mat i_image = t_imgI.m_mask;
 		cv::Mat o_image;
+
 		cv::threshold(i_image, o_image, t_minGray, t_maxGray, cv::THRESH_BINARY);	//阈值分割，分割后连通域只有一种
 		PZTRegions o_region(o_image);												//利用图像构造region，得到阈值分割结果图像
 		t_reg = o_region;															//输出
+
 		
 		return res;
 	}
@@ -83,6 +88,7 @@ namespace PZTIMAGE {
 		if (t_imgI.m_image.type() == CV_8UC3)
 			return false;
 
+
 		//做法：返回image，所以直接container相减？等于是矩阵相减
 		t_imgI.ReduceDomain(t_reg);
 		t_imgO = t_imgI;
@@ -98,6 +104,7 @@ namespace PZTIMAGE {
 	*/
 	bool OperatorSet::select_shape(PZTRegions t_regI, PZTRegions& t_regO, Features t_fea, float t_min, float t_max) {
 		bool res = true;
+
 
 		//不能用region来判断空
 		//if (t_regI.m_regions.empty())
@@ -157,6 +164,7 @@ namespace PZTIMAGE {
 					continue;
 				else
 				{
+
 					//如何将不符合的灰度值置0? how to set the value of unmatched pixel to 0; 
 
 				}
