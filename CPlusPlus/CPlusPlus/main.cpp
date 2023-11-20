@@ -1,4 +1,4 @@
-#include "Test.h"
+﻿#include "Test.h"
 #include "Core.h"
 #include "ImgProc.h"
 #include "DefectDetection.h"

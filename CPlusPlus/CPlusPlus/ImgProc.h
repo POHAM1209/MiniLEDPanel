@@ -1,4 +1,4 @@
-#ifndef _IMGPROC_H_
+ï»¿#ifndef _IMGPROC_H_
 #define _IMGPROC_H_
 
 #include "Core.h"
@@ -15,62 +15,62 @@ namespace PZTIMAGE {
 	public:
 		//
 
-		/*brief:¶ÁÈ¡Í¼Æ¬
-		* param0[o]:¶ÁÈ¡µ½µÄÍ¼Æ¬		ÈÎÒâÍ¨µÀÊıÍ¼Ïñ
-		* param1[i]:Í¼Æ¬Â·¾¶			string
+		/*brief:è¯»å–å›¾ç‰‡
+		* param0[o]:è¯»å–åˆ°çš„å›¾ç‰‡		ä»»æ„é€šé“æ•°å›¾åƒ
+		* param1[i]:å›¾ç‰‡è·¯å¾„			string
 		*/
 		static bool read_image(PZTImage& t_imgO, std::string t_fileName);
 
-		/*brief:»Ò¶È»¯
-		* param0[i]:ÊäÈëÍ¼Æ¬
-		* param1[o]:Êä³öÍ¼Æ¬
+		/*brief:ç°åº¦åŒ–
+		* param0[i]:è¾“å…¥å›¾ç‰‡
+		* param1[o]:è¾“å‡ºå›¾ç‰‡
 		*/
 		static bool gray_image(PZTImage t_imgI, PZTImage& t_imgO);
 
-		/*brief:ãĞÖµ·Ö¸î
-		* param0[i]:ÊäÈëimage			»Ò¶ÈÍ¼Ïñ
-		* param1[o]:Êä³öregion			¶şÖµ»¯Í¼Ïñ£¬0»òÕß255
-		* param2[i]:×îĞ¡ãĞÖµ
-		* param3[i]:×î´óãĞÖµ
+		/*brief:é˜ˆå€¼åˆ†å‰²
+		* param0[i]:è¾“å…¥image			ç°åº¦å›¾åƒ
+		* param1[o]:è¾“å‡ºregion			äºŒå€¼åŒ–å›¾åƒï¼Œ0æˆ–è€…255
+		* param2[i]:æœ€å°é˜ˆå€¼
+		* param3[i]:æœ€å¤§é˜ˆå€¼
 		*/
 		static bool threshold(PZTImage t_imgI, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray);
 
-		/*brief:Á¬Í¨Óò·Ö¸î
-		* param0[i]:ÊäÈëregion
-		* param1[o]:Êä³öregion(Á¬Í¨Óò·Ö¿ª)
+		/*brief:è¿é€šåŸŸåˆ†å‰²
+		* param0[i]:è¾“å…¥region
+		* param1[o]:è¾“å‡ºregion(è¿é€šåŸŸåˆ†å¼€)
 		*/
 		static bool connection(PZTRegions t_reg, PZTRegions& t_regs);
 
-		/*brief:ÔÚimageÉÏ¼õÈ¥region
-		* param0[i]:ÊäÈëimage
-		* param1[i]:ÊäÈëregion
-		* param2[o]:Êä³öimage
+		/*brief:åœ¨imageä¸Šå‡å»region
+		* param0[i]:è¾“å…¥image
+		* param1[i]:è¾“å…¥region
+		* param2[o]:è¾“å‡ºimage
 		*/
 		static bool reduce_domain(PZTImage t_imgI, PZTRegions t_reg, PZTImage& t_imgO);
 
-		/*brief:°´ÕÕĞÎ×´ÌØÕ÷Ñ¡Ôñ½á¹û
-		* param0[i]:ÊäÈëregion£¬Ò»°ãÎªconnectionºóµÄregion
-		* param1[o]:Êä³öregion
-		* param2[i]:ÊäÈëÌØÕ÷ÀàĞÍ(ÒÔÊ²Ã´ÌØÕ÷Ñ¡Ôñ)
-		* param3[i]:×îĞ¡·¶Î§
-		* param4[i]:×î´ó·¶Î§
+		/*brief:æŒ‰ç…§å½¢çŠ¶ç‰¹å¾é€‰æ‹©ç»“æœ
+		* param0[i]:è¾“å…¥regionï¼Œä¸€èˆ¬ä¸ºconnectionåçš„region
+		* param1[o]:è¾“å‡ºregion
+		* param2[i]:è¾“å…¥ç‰¹å¾ç±»å‹(ä»¥ä»€ä¹ˆç‰¹å¾é€‰æ‹©)
+		* param3[i]:æœ€å°èŒƒå›´
+		* param4[i]:æœ€å¤§èŒƒå›´
 		*/
 		static bool select_shape(PZTRegions t_regI, PZTRegions& t_regO, Features t_fea, float t_min, float t_max);
 
-		/*brief:ÔöÇ¿Í¼Æ¬¶Ô±È¶È				»Ò¶ÈÍ¼
-		* param0[i]:ÊäÈëÍ¼Æ¬
-		* param1[o]:Êä³öÍ¼Æ¬
-		* param2[i]:mask³¤
-		* param3[i]:mask¿í
-		* param4[i]:ÔöÇ¿Ç¿¶È
+		/*brief:å¢å¼ºå›¾ç‰‡å¯¹æ¯”åº¦				ç°åº¦å›¾
+		* param0[i]:è¾“å…¥å›¾ç‰‡
+		* param1[o]:è¾“å‡ºå›¾ç‰‡
+		* param2[i]:maské•¿
+		* param3[i]:maskå®½
+		* param4[i]:å¢å¼ºå¼ºåº¦
 		*/
 		static bool emphasize(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight, uint8_t Factor);
 
-		/*brief:»Ò¶ÈÔöÇ¿					»Ò¶ÈÍ¼
-		* param0[i]:ÊäÈëÍ¼Æ¬
-		* param1[o]:Êä³öÍ¼Æ¬
-		* param2[i]:mask³¤
-		* param3[i]:mask¿í
+		/*brief:ç°åº¦å¢å¼º					ç°åº¦å›¾
+		* param0[i]:è¾“å…¥å›¾ç‰‡
+		* param1[o]:è¾“å‡ºå›¾ç‰‡
+		* param2[i]:maské•¿
+		* param3[i]:maskå®½
 		*/
 		static bool gray_range_rect(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight);
 

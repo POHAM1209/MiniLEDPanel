@@ -1,4 +1,4 @@
-#include "DefectDetection.h"
+﻿#include "DefectDetection.h"
 
 namespace PZTIMAGE {
 
