@@ -21,13 +21,19 @@ namespace PZTIMAGE {
 		*/
 		static bool read_image(PZTImage& t_imgO, std::string t_fileName);
 
+		/*brief:灰度化
+		* param0[i]:输入图片
+		* param1[o]:输出图片
+		*/
+		static bool gray_image(PZTImage t_imgI, PZTImage& t_imgO);
+
 		/*brief:阈值分割
 		* param0[i]:输入image			灰度图像
 		* param1[o]:输出region			二值化图像，0或者255
 		* param2[i]:最小阈值
 		* param3[i]:最大阈值
 		*/
-		static bool threshold(PZTImage t_img, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray);
+		static bool threshold(PZTImage t_imgI, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray);
 
 		/*brief:连通域分割
 		* param0[i]:输入region
@@ -51,7 +57,7 @@ namespace PZTIMAGE {
 		*/
 		static bool select_shape(PZTRegions t_regI, PZTRegions& t_regO, Features t_fea, float t_min, float t_max);
 
-		/*brief:增强图片对比度
+		/*brief:增强图片对比度				灰度图
 		* param0[i]:输入图片
 		* param1[o]:输出图片
 		* param2[i]:mask长
@@ -60,15 +66,13 @@ namespace PZTIMAGE {
 		*/
 		static bool emphasize(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight, uint8_t Factor);
 
-		/*brief:
-		*
+		/*brief:灰度增强					灰度图
+		* param0[i]:输入图片
+		* param1[o]:输出图片
+		* param2[i]:mask长
+		* param3[i]:mask宽
 		*/
-		static bool rank_rect();
-
-		/*brief:
-		*
-		*/
-		static bool gray_range_rect();
+		static bool gray_range_rect(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight);
 
 	};
 

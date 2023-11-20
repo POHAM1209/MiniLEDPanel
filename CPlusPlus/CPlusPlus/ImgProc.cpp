@@ -2,151 +2,262 @@
 
 namespace PZTIMAGE {
 
-	/*brief:¶ÁÈ¡Í¼Æ¬
-	* param0[o]:¶ÁÈ¡µ½µÄÍ¼Æ¬		ÈÎÒâÍ¨µÀÊýÍ¼Ïñ
-	* param1[i]:Í¼Æ¬Â·¾¶			string
+	/*brief:ï¿½ï¿½È¡Í¼Æ¬
+	* param0[o]:ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½Í¼Æ¬		ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½
+	* param1[i]:Í¼Æ¬Â·ï¿½ï¿½			string
 	*/
 	bool OperatorSet::read_image(PZTImage& t_imgO, std::string t_fileName) {
-		bool res = false;
-		PZTImage readimage(t_fileName);					//ÀûÓÃÎÄ¼þÃû¹¹Ôìº¯Êý£¬¶ÁÈ¡Í¼Ïñ
-		t_imgO = readimage;								//Êä³ö
+		bool res = true;
+		if (t_fileName.empty())
+			return false;
+		PZTImage readimage(t_fileName);					//ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ìº¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¡Í¼ï¿½ï¿½
+		t_imgO = readimage;								//ï¿½ï¿½ï¿½
 		return res;
 	}
 
-	/*brief:ãÐÖµ·Ö¸î
-	* param0[i]:ÊäÈëimage			»Ò¶ÈÍ¼Ïñ
-	* param1[o]:Êä³öregion			¶þÖµ»¯Í¼Ïñ£¬0»òÕß255
-	* param2[i]:×îÐ¡ãÐÖµ
-	* param3[i]:×î´óãÐÖµ
+	bool OperatorSet::gray_image(PZTImage t_imgI, PZTImage& t_imgO)
+	{
+		bool res = true;
+
+		if (t_imgI.m_image.empty())
+			return false;
+		if (t_imgI.m_image.type() == CV_8UC1)
+			return false;
+		
+		t_imgI.RGB2Gray();
+		t_imgO = t_imgI;
+
+		return res;
+	}
+
+	/*brief:ï¿½ï¿½Öµï¿½Ö¸ï¿½
+	* param0[i]:ï¿½ï¿½ï¿½ï¿½image			ï¿½Ò¶ï¿½Í¼ï¿½ï¿½
+	* param1[o]:ï¿½ï¿½ï¿½region			ï¿½ï¿½Öµï¿½ï¿½Í¼ï¿½ï¿½0ï¿½ï¿½ï¿½ï¿½255
+	* param2[i]:ï¿½ï¿½Ð¡ï¿½ï¿½Öµ
+	* param3[i]:ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
 	*/
-	bool OperatorSet::threshold(PZTImage t_img, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray) {
-		bool res = false;
-		cv::Mat i_image = t_img.m_image;
+	bool OperatorSet::threshold(PZTImage t_imgI, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray) {
+		bool res = true;
+
+		if (t_imgI.m_image.empty())
+			return false;
+		if (t_imgI.m_image.type() == CV_8UC3)
+			return false;
+
+		cv::Mat i_image = t_imgI.m_mask;
 		cv::Mat o_image;
-		cv::threshold(i_image, o_image, t_minGray, t_maxGray, cv::THRESH_BINARY);	//ãÐÖµ·Ö¸î£¬·Ö¸îºóÁ¬Í¨ÓòÖ»ÓÐÒ»ÖÖ
-		PZTRegions n_region(o_image);												//ÀûÓÃÍ¼Ïñ¹¹Ôìregion£¬µÃµ½ãÐÖµ·Ö¸î½á¹ûÍ¼Ïñ
-		t_reg = n_region;															//Êä³ö
+		cv::threshold(i_image, o_image, t_minGray, t_maxGray, cv::THRESH_BINARY);	//ï¿½ï¿½Öµï¿½Ö¸î£¬ï¿½Ö¸ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½Ö»ï¿½ï¿½Ò»ï¿½ï¿½
+		PZTRegions o_region(o_image);												//ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½regionï¿½ï¿½ï¿½Ãµï¿½ï¿½ï¿½Öµï¿½Ö¸ï¿½ï¿½ï¿½Í¼ï¿½ï¿½
+		t_reg = o_region;															//ï¿½ï¿½ï¿½
+		
 		return res;
 	}
 
-	/*brief:Á¬Í¨Óò·Ö¸î
-	* param0[i]:ÊäÈëregion
-	* param1[o]:Êä³öregion(Á¬Í¨Óò·Ö¿ª)
+	/*brief:ï¿½ï¿½Í¨ï¿½ï¿½Ö¸ï¿½
+	* param0[i]:ï¿½ï¿½ï¿½ï¿½region
+	* param1[o]:ï¿½ï¿½ï¿½region(ï¿½ï¿½Í¨ï¿½ï¿½Ö¿ï¿½)
 	*/
 	bool OperatorSet::connection(PZTRegions t_reg, PZTRegions& t_regs) {
-		bool res = false;
-		t_reg.Connection();				//Á¬Í¨Óò·Ö¸î
-		t_reg.GetRegionFeature(0);		//»ñÈ¡×îÐÂµÄregion feature£¬Ðè±éÀú
-		t_regs = t_reg;					//Êä³ö
+		bool res = true;
+
+		t_reg.Connection();				//ï¿½ï¿½Í¨ï¿½ï¿½Ö¸î£¬ï¿½ÑµÃµï¿½m_regionNum,m_regionsï¿½ï¿½È±ï¿½ï¿½m_feature
+		for (int i = 0; i < t_reg.GetRegionNum(); i++)
+		{
+			//ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ£ï¿½ï¿½ï¿½ï¿½ï¿½Ö±ï¿½ï¿½ï¿½Úºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½? 
+			t_reg.GetRegionFeature(i);
+		}
+		t_regs = t_reg;					//ï¿½ï¿½ï¿½
 		return res;
 	}
 
-	/*brief:ÔÚimageÉÏ¼õÈ¥region
-	* param0[i]:ÊäÈëimage
-	* param1[i]:ÊäÈëregion
-	* param2[o]:Êä³öimage
+	/*brief:ï¿½ï¿½imageï¿½Ï¼ï¿½È¥region
+	* param0[i]:ï¿½ï¿½ï¿½ï¿½image
+	* param1[i]:ï¿½ï¿½ï¿½ï¿½region
+	* param2[o]:ï¿½ï¿½ï¿½image
 	*/
 	bool OperatorSet::reduce_domain(PZTImage t_imgI, PZTRegions t_reg, PZTImage& t_imgO) {
-		bool res = false;
-		//×ö·¨£º·µ»Øimage£¬ËùÒÔÖ±½ÓcontainerÏà¼õ£¿µÈÓÚÊÇ¾ØÕóÏà¼õ
+		bool res = true;
+
+		if (t_imgI.m_image.empty())
+			return false;
+		if (t_imgI.m_image.type() == CV_8UC3)
+			return false;
+
+		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½imageï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö±ï¿½ï¿½containerï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		t_imgI.ReduceDomain(t_reg);
 		t_imgO = t_imgI;
 		return res;
 	}
 
-	/*brief:°´ÕÕÐÎ×´ÌØÕ÷Ñ¡Ôñ½á¹û
-	* param0[i]:ÊäÈëregion£¬Ò»°ãÎªconnectionºóµÄregion
-	* param1[o]:Êä³öregion
-	* param2[i]:ÊäÈëÌØÕ÷ÀàÐÍ(ÒÔÊ²Ã´ÌØÕ÷Ñ¡Ôñ)
-	* param3[i]:×îÐ¡·¶Î§
-	* param4[i]:×î´ó·¶Î§
+	/*brief:ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½
+	* param0[i]:ï¿½ï¿½ï¿½ï¿½regionï¿½ï¿½Ò»ï¿½ï¿½Îªconnectionï¿½ï¿½ï¿½region
+	* param1[o]:ï¿½ï¿½ï¿½region
+	* param2[i]:ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½Ê²Ã´ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½)
+	* param3[i]:ï¿½ï¿½Ð¡ï¿½ï¿½Î§
+	* param4[i]:ï¿½ï¿½ï¿½Î§
 	*/
 	bool OperatorSet::select_shape(PZTRegions t_regI, PZTRegions& t_regO, Features t_fea, float t_min, float t_max) {
-		bool res = false;
+		bool res = true;
 
+		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½regionï¿½ï¿½ï¿½Ð¶Ï¿ï¿½
+		//if (t_regI.m_regions.empty())
+		//	return false;
+
+		int num = t_regI.GetRegionNum();
 		if (t_fea == FEATURES_AREA)
 		{
-			//×ö·¨£º±éÀúregionÁ¬Í¨Óò£¬²¢¼ÆËãÃæ»ý
-			//Ãæ»ý²»ÔÚÒªÇóÄÚµÄÁ¬Í¨Óò»Ò¶ÈÖµ¸³0
-			//ÎÊÌâ£ºÔõÃ´¼ÆËãÃæ»ý£¿
-			//for (i = 0; i < t_regI.m_FeatureNum; i++)
-			for (int i = 0; i < t_regI.GetRegionNum(); i++)
+			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½regionï¿½ï¿½Í¨ï¿½ò£¬²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+			//ï¿½ï¿½ï¿½â£ºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½Úµï¿½ï¿½ï¿½Í¨ï¿½ï¿½Ò¶ï¿½Öµï¿½ï¿½0
+			for (int i = 1; i < num; i++)//0ï¿½Ç±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç´ï¿½0ï¿½ï¿½ï¿½Ç´ï¿½1ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½
 			{
-				RegionFeature ii = t_regI.GetRegionFeature(i);
+				RegionFeature regf = t_regI.GetRegionFeature(i);
+				if (regf.m_area >= t_min && regf.m_area <= t_max)
+					continue;
+				else
+				{
+					//ï¿½ï¿½Î½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÏµÄ»Ò¶ï¿½Öµï¿½ï¿½0? ï¿½ï¿½Ã´ï¿½Ãµï¿½regionÎ»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½0?
+
+				}
 			}
 		}
 		else if (t_fea == FEATURES_CIRCULARITY)
 		{
+			for (int i = 1; i < num; i++)//0ï¿½Ç±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç´ï¿½0ï¿½ï¿½ï¿½Ç´ï¿½1ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½
+			{
+				RegionFeature regf = t_regI.GetRegionFeature(i);
+				if (regf.m_circularity >= t_min && regf.m_circularity <= t_max)
+					continue;
+				else
+				{
+					//ï¿½ï¿½Î½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÏµÄ»Ò¶ï¿½Öµï¿½ï¿½0? how to set the value of unmatched pixel to 0; 
 
+				}
+			}
 		}
 		else if (t_fea == FEATURES_ROW)
 		{
+			for (int i = 1; i < num; i++)//0ï¿½Ç±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç´ï¿½0ï¿½ï¿½ï¿½Ç´ï¿½1ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½
+			{
+				RegionFeature regf = t_regI.GetRegionFeature(i);
+				if (regf.m_row >= t_min && regf.m_row <= t_max)
+					continue;
+				else
+				{
+					//ï¿½ï¿½Î½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÏµÄ»Ò¶ï¿½Öµï¿½ï¿½0? how to set the value of unmatched pixel to 0; 
 
+				}
+			}
 		}
 		else if (t_fea == FEATURES_COLUMN)
 		{
+			for (int i = 1; i < num; i++)//0ï¿½Ç±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç´ï¿½0ï¿½ï¿½ï¿½Ç´ï¿½1ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½
+			{
+				RegionFeature regf = t_regI.GetRegionFeature(i);
+				if (regf.m_col >= t_min && regf.m_col <= t_max)
+					continue;
+				else
+				{
+					//ï¿½ï¿½Î½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÏµÄ»Ò¶ï¿½Öµï¿½ï¿½0? how to set the value of unmatched pixel to 0; 
 
+				}
+			}
 		}
 		else
 		{
-			std::cout << "error! there is not this feature!" << std::endl;
+			std::cout << "error! there is not this Feature!" << std::endl;
 		}
 
 		return res;
 	}
 
-	/*brief:ÔöÇ¿Í¼Æ¬¶Ô±È¶È
-	* param0[i]:ÊäÈëÍ¼Æ¬
-	* param1[o]:Êä³öÍ¼Æ¬
-	* param2[i]:mask³¤
-	* param3[i]:mask¿í
-	* param4[i]:ÔöÇ¿Ç¿¶È
+	/*brief:ï¿½ï¿½Ç¿Í¼Æ¬ï¿½Ô±È¶ï¿½
+	* param0[i]:ï¿½ï¿½ï¿½ï¿½Í¼Æ¬
+	* param1[o]:ï¿½ï¿½ï¿½Í¼Æ¬
+	* param2[i]:maskï¿½ï¿½
+	* param3[i]:maskï¿½ï¿½
+	* param4[i]:ï¿½ï¿½Ç¿Ç¿ï¿½ï¿½
 	*/
 	bool OperatorSet::emphasize(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight, uint8_t Factor) {
-		bool res = false;
-		//¹«Ê½res := round((orig - mean) * Factor) + orig
-		//µÈ¼ÛÓÚÔÚMaskHeight¡¢MaskWidthµÄ¿Õ¼äÄÚÖÐÐÄ»¯ºóÔö¼Ó·½²î
+		bool res = true;
+
+		if (t_imgI.m_image.empty())
+			return false;
+		if (t_imgI.m_image.type() == CV_8UC3)
+			return false;
+
+		//ï¿½ï¿½Ê½res := round((orig - mean) * Factor) + orig
+		//ï¿½È¼ï¿½ï¿½ï¿½ï¿½ï¿½MaskHeightï¿½ï¿½MaskWidthï¿½Ä¿Õ¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó·ï¿½ï¿½ï¿½
 		cv::Mat mean;
 
-		//µÈ¼ÛÓÚÇóÖ¸¶¨·¶Î§´°¿ÚÄÚµÄ¾ùÖµ
-		cv::blur(t_imgI.m_image, mean, cv::Size(t_MaskWidth, t_MaskHeight));
-		t_imgO.m_image.create(t_imgI.m_image.size(), t_imgI.m_image.type());
-		if (t_imgI.m_image.type() == CV_8UC1)
+		//ï¿½Ôµï¿½Í¨ï¿½ï¿½Îª×¼ï¿½ï¿½m_mask
+		for (int i = 0; i < t_imgI.m_image.rows; i++)
 		{
-			for (int i = 0; i < t_imgI.m_image.rows; i++)
+			const uchar* rptr = t_imgI.m_image.ptr<uchar>(i);
+			uchar* mptr = mean.ptr<uchar>(i);
+			uchar* optr = t_imgO.m_image.ptr<uchar>(i);
+			for (int j = 0; j < t_imgI.m_image.cols; j++)
 			{
-				const uchar* rptr = t_imgI.m_image.ptr<uchar>(i);
-				uchar* mptr = mean.ptr<uchar>(i);
-				uchar* optr = t_imgO.m_image.ptr<uchar>(i);
-				for (int j = 0; j < t_imgI.m_image.cols; j++)
-				{
-					optr[j] = cv::saturate_cast<uchar>(round((rptr[j] - mptr[j]) * Factor) + rptr[j] * 1.0f);
-				}
-			}
-		}
-		else if (t_imgI.m_image.type() == CV_8UC3)
-		{
-			for (int i = 0; i < t_imgI.m_image.rows; i++)
-			{
-				const uchar* rptr = t_imgI.m_image.ptr<uchar>(i);
-				uchar* mptr = mean.ptr<uchar>(i);
-				uchar* optr = t_imgO.m_image.ptr<uchar>(i);
-				for (int j = 0; j < t_imgI.m_image.cols; j++)
-				{
-					//±¥ºÍ×ª»» Ð¡ÓÚ0µÄÖµ»á±»ÖÃÎª0 ´óÓÚ255µÄÖµ»á±»ÖÃÎª255
-					optr[j * 3] = cv::saturate_cast<uchar>(round((rptr[j * 3] - mptr[j * 3]) * Factor) + rptr[j * 3] * 1.0f);
-					optr[j * 3 + 1] = cv::saturate_cast<uchar>(round((rptr[j * 3 + 1] - mptr[j * 3 + 1]) * Factor) + rptr[j * 3 + 1] * 1.0f);
-					optr[j * 3 + 2] = cv::saturate_cast<uchar>(round((rptr[j * 3 + 2] - mptr[j * 3 + 2]) * Factor) + rptr[j * 3 + 2] * 1.0f);
-				}
+				optr[j] = cv::saturate_cast<uchar>(round((rptr[j] - mptr[j]) * Factor) + float(rptr[j]) * 1.0f);
 			}
 		}
 
 		return res;
 	}
 
+	/*brief:ï¿½Ò¶ï¿½ï¿½ï¿½Ç¿
+	* param0[i]:ï¿½ï¿½ï¿½ï¿½Í¼Æ¬
+	* param1[o]:ï¿½ï¿½ï¿½Í¼Æ¬
+	* param2[i]:maskï¿½ï¿½
+	* param3[i]:maskï¿½ï¿½
+	*/
+	bool OperatorSet::gray_range_rect(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight)
+	{
+		bool res = true;
+
+		if (t_imgI.m_image.empty())
+			return false;
+		if (t_imgI.m_image.type() == CV_8UC3)
+			return false;
+
+		//Í¼ï¿½ï¿½ß½ï¿½ï¿½ï¿½ï¿½ï¿½
+		int hh = (t_MaskHeight - 1) / 2;
+		int hw = (t_MaskWidth - 1) / 2;
+		cv::Mat Newsrc;
+		cv::copyMakeBorder(t_imgI.m_mask, Newsrc, hh, hh, hw, hw, cv::BORDER_REFLECT_101);//ï¿½Ô±ï¿½ÔµÎªï¿½á£¬ï¿½Ô³ï¿½
+		t_imgO.m_mask= cv::Mat::zeros(t_imgI.m_mask.rows, t_imgI.m_mask.cols, t_imgI.m_mask.type());
+
+		//ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½
+		for (int i = 0; i < t_imgI.m_mask.rows; i++)
+		{
+			for (int j = 0; j < t_imgI.m_mask.cols; j++)
+			{
+				//uchar srcValue = src.at<uchar>(i, j);
+				int minValue = 255;
+				int maxValue = 0;
+				for (int k = 0; k < hh; k++)
+				{
+					for (int z = 0; z < hw; z++)
+					{
+						int srcValue = (int)Newsrc.at<uchar>(i + k, j + z);
+						minValue = minValue > srcValue ? srcValue : minValue;
+						maxValue = maxValue > srcValue ? maxValue : srcValue;
+
+					}
+				}
+				uchar diffValue = (uchar)(maxValue - minValue);
+				t_imgO.m_mask.at<uchar>(i, j) = diffValue;
+			}
+		}
+
+		return res;
+	}
 
 	bool TestImgProc() {
 		bool res = false;
+
+		PZTImage img("E:\\1dong\\5-18-ExposureTime3000-normal\\IMG_Light\\BX2.tif");
+		
+
 
 		return res;
 	}
