@@ -57,7 +57,7 @@ namespace PZTIMAGE {
 		*/
 		static bool select_shape(PZTRegions t_regI, PZTRegions& t_regO, Features t_fea, float t_min, float t_max);
 
-		/*brief:增强图片对比度				灰度图
+		/*brief:增强图片对比度
 		* param0[i]:输入图片
 		* param1[o]:输出图片
 		* param2[i]:mask长
@@ -66,7 +66,7 @@ namespace PZTIMAGE {
 		*/
 		static bool emphasize(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight, uint8_t Factor);
 
-		/*brief:灰度增强					灰度图
+		/*brief:灰度增强
 		* param0[i]:输入图片
 		* param1[o]:输出图片
 		* param2[i]:mask长
@@ -74,6 +74,13 @@ namespace PZTIMAGE {
 		*/
 		static bool gray_range_rect(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight);
 
+		/*brief:取region信息
+		* param0[i]:输入region
+		* param1[o]:region面积
+		* param2[o]:region中心行
+		* param3[o]:region中心列
+		*/
+		static bool area_center(PZTRegions t_regI);		//该用什么数据类型
 	};
 
 	bool TestImgProc();
