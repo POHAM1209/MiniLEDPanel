@@ -2,10 +2,6 @@
 
 namespace PZTIMAGE {
 
-	/*brief:读取图片
-	* param0[o]:读取到的图片		任意通道数图像
-	* param1[i]:图片路径			string
-	*/
 	bool OperatorSet::read_image(PZTImage& t_imgO, std::string t_fileName) {
 		bool res = true;
 		if (t_fileName.empty())
@@ -32,22 +28,13 @@ namespace PZTIMAGE {
 		return res;
 	}
 
-	/*brief:阈值分割
-	* param0[i]:输入image			灰度图像
-	* param1[o]:输出region			二值化图像，0或者255
-	* param2[i]:最小阈值
-	* param3[i]:最大阈值
-
-	*/
 	bool OperatorSet::threshold(PZTImage t_imgI, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray) {
 		bool res = true;
 
 		if (t_imgI.m_image.empty())
 			return false;
-		if (t_imgI.m_image.type() == CV_8UC3)
-			return false;
 
-		cv::Mat i_image = t_imgI.m_mask;
+		cv::Mat i_image = t_imgI.m_image;
 		cv::Mat o_image;
 
 		cv::threshold(i_image, o_image, t_minGray, t_maxGray, cv::THRESH_BINARY);	//阈值分割，分割后连通域只有一种
@@ -58,10 +45,6 @@ namespace PZTIMAGE {
 		return res;
 	}
 
-	/*brief:连通域分割
-	* param0[i]:输入region
-	* param1[o]:输出region(连通域分开)
-	*/
 	bool OperatorSet::connection(PZTRegions t_reg, PZTRegions& t_regs) {
 		bool res = true;
 
@@ -75,11 +58,6 @@ namespace PZTIMAGE {
 		return res;
 	}
 
-	/*brief:在image上减去region
-	* param0[i]:输入image
-	* param1[i]:输入region
-	* param2[o]:输出image
-	*/
 	bool OperatorSet::reduce_domain(PZTImage t_imgI, PZTRegions t_reg, PZTImage& t_imgO) {
 		bool res = true;
 
@@ -95,96 +73,51 @@ namespace PZTIMAGE {
 		return res;
 	}
 
-	/*brief:按照形状特征选择结果
-	* param0[i]:输入region，一般为connection后的region
-	* param1[o]:输出region
-	* param2[i]:输入特征类型(以什么特征选择)
-	* param3[i]:最小范围
-	* param4[i]:最大范围
-	*/
 	bool OperatorSet::select_shape(PZTRegions t_regI, PZTRegions& t_regO, Features t_fea, float t_min, float t_max) {
 		bool res = true;
 
-
-		//不能用region来判断空
-		//if (t_regI.m_regions.empty())
-		//	return false;
-
+		std::vector<uint32_t> indexs;
 		int num = t_regI.GetRegionNum();
-		if (t_fea == FEATURES_AREA)
+
+		for (int i = 1; i < num; i++)
 		{
-			//做法：遍历region连通域，并计算面积
-			//问题：面积不在要求内的连通域灰度值赋0
-			for (int i = 1; i < num; i++)//0是背景？是从0还是从1开始遍历
+			RegionFeature regf = t_regI.GetRegionFeature(i);
+			switch (t_fea)
 			{
-				RegionFeature regf = t_regI.GetRegionFeature(i);
+			case PZTIMAGE::FEATURES_AREA:
 				if (regf.m_area >= t_min && regf.m_area <= t_max)
-					continue;
-				else
 				{
-					//如何将不符合的灰度值置0? 怎么拿到region位置来置0?
-
+					indexs.push_back(i);
 				}
-			}
-		}
-		else if (t_fea == FEATURES_CIRCULARITY)
-		{
-			for (int i = 1; i < num; i++)//0是背景？是从0还是从1开始遍历
-			{
-				RegionFeature regf = t_regI.GetRegionFeature(i);
+				break;
+			case PZTIMAGE::FEATURES_CIRCULARITY:
 				if (regf.m_circularity >= t_min && regf.m_circularity <= t_max)
-					continue;
-				else
 				{
-					//如何将不符合的灰度值置0? how to set the value of unmatched pixel to 0; 
-
+					indexs.push_back(i);
 				}
-			}
-		}
-		else if (t_fea == FEATURES_ROW)
-		{
-			for (int i = 1; i < num; i++)//0是背景？是从0还是从1开始遍历
-			{
-				RegionFeature regf = t_regI.GetRegionFeature(i);
+				break;
+			case PZTIMAGE::FEATURES_ROW:
 				if (regf.m_row >= t_min && regf.m_row <= t_max)
-					continue;
-				else
 				{
-					//如何将不符合的灰度值置0? how to set the value of unmatched pixel to 0; 
-
+					indexs.push_back(i);
 				}
-			}
-		}
-		else if (t_fea == FEATURES_COLUMN)
-		{
-			for (int i = 1; i < num; i++)//0是背景？是从0还是从1开始遍历
-			{
-				RegionFeature regf = t_regI.GetRegionFeature(i);
+				break;
+			case PZTIMAGE::FEATURES_COLUMN:
 				if (regf.m_col >= t_min && regf.m_col <= t_max)
-					continue;
-				else
 				{
-
-					//如何将不符合的灰度值置0? how to set the value of unmatched pixel to 0; 
-
+					indexs.push_back(i);
 				}
+				break;
+			default:
+				break;
 			}
 		}
-		else
-		{
-			std::cout << "error! there is not this Feature!" << std::endl;
-		}
+		PZTRegions result(t_regI, indexs);
+		t_regO = result;
 
 		return res;
 	}
 
-	/*brief:增强图片对比度
-	* param0[i]:输入图片
-	* param1[o]:输出图片
-	* param2[i]:mask长
-	* param3[i]:mask宽
-	* param4[i]:增强强度
-	*/
 	bool OperatorSet::emphasize(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight, uint8_t Factor) {
 		bool res = true;
 
@@ -196,28 +129,46 @@ namespace PZTIMAGE {
 		//公式res := round((orig - mean) * Factor) + orig
 		//等价于在MaskHeight、MaskWidth的空间内中心化后增加方差
 		cv::Mat mean;
+		cv::Mat input = t_imgI.m_image;
+		cv::Mat output;
 
-		//以单通道为准，m_mask
-		for (int i = 0; i < t_imgI.m_image.rows; i++)
+		cv::blur(input, mean, cv::Size(t_MaskWidth, t_MaskHeight));
+		output.create(input.size(), input.type());
+
+		if (input.type() == CV_8UC1)
 		{
-			const uchar* rptr = t_imgI.m_image.ptr<uchar>(i);
-			uchar* mptr = mean.ptr<uchar>(i);
-			uchar* optr = t_imgO.m_image.ptr<uchar>(i);
-			for (int j = 0; j < t_imgI.m_image.cols; j++)
-			{
-				optr[j] = cv::saturate_cast<uchar>(round((rptr[j] - mptr[j]) * Factor) + float(rptr[j]) * 1.0f);
-			}
+		    for (int i = 0; i < input.rows; i++)
+		    {
+		        const uchar* rptr = input.ptr<uchar>(i);
+		        uchar* mptr = mean.ptr<uchar>(i);
+		        uchar* optr = output.ptr<uchar>(i);
+		        for (int j = 0; j < input.cols; j++)
+		        {
+		            optr[j] = cv::saturate_cast<uchar>(round((rptr[j] - mptr[j]) * Factor) + rptr[j] * 1.0f);
+		        }
+		    }
 		}
+		else if (input.type() == CV_8UC3)
+		{
+		    for (int i = 0; i < input.rows; i++)
+		    {
+		        const uchar* rptr = input.ptr<uchar>(i);
+		        uchar* mptr = mean.ptr<uchar>(i);
+		        uchar* optr = output.ptr<uchar>(i);
+		        for (int j = 0; j < input.cols; j++)
+		        {
+		            //饱和转换 小于0的值会被置为0 大于255的值会被置为255
+		            optr[j * 3] = cv::saturate_cast<uchar>(round((rptr[j * 3] - mptr[j * 3]) * Factor) + rptr[j * 3] * 1.0f);
+		            optr[j * 3 + 1] = cv::saturate_cast<uchar>(round((rptr[j * 3 + 1] - mptr[j * 3 + 1]) * Factor) + rptr[j * 3 + 1] * 1.0f);
+		            optr[j * 3 + 2] = cv::saturate_cast<uchar>(round((rptr[j * 3 + 2] - mptr[j * 3 + 2]) * Factor) + rptr[j * 3 + 2] * 1.0f);
+		        }
+		    }
+		}
+		t_imgO.m_image = output;
 
 		return res;
 	}
 
-	/*brief:灰度增强
-	* param0[i]:输入图片
-	* param1[o]:输出图片
-	* param2[i]:mask长
-	* param3[i]:mask宽
-	*/
 	bool OperatorSet::gray_range_rect(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight)
 	{
 		bool res = true;
@@ -260,12 +211,157 @@ namespace PZTIMAGE {
 		return res;
 	}
 
+	bool OperatorSet::area_center(PZTRegions t_regI, int& t_area, cv::Point2f& t_point)
+	{
+		bool res = true;
+
+		return res;
+	}
+
+	bool OperatorSet::fill_up(PZTRegions t_regI, PZTRegions t_regO)
+	{
+		bool res = true;
+
+		//有没有判断点
+		t_regI.FillUp();
+		t_regO = t_regI;
+
+		return res;
+	}
+
+	bool OperatorSet::erosion_circle(PZTRegions t_regI, PZTRegions& t_regO, int t_radius)
+	{
+		bool res = true;
+
+		StructElement type = STRUCTELEMENT_CIRCLE;
+		t_regI.Erosion(type,t_radius);
+		t_regO = t_regI;
+
+		return res;
+	}
+	
+	bool OperatorSet::mean_image(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight)
+	{
+		bool res = true;
+
+		if (t_imgI.m_image.empty())
+			return false;
+		if (t_imgI.m_image.type() == CV_8UC3)
+			return false;
+
+		cv::Mat input = t_imgI.m_image;
+		cv::Mat blur_image;
+		cv::blur(input, blur_image, cv::Size(t_MaskWidth, t_MaskHeight));
+		t_imgO.m_image = blur_image;
+
+		return res;
+	}
+
+	bool OperatorSet::dyn_threshold(PZTImage t_imgI, PZTImage t_thresholdimgI, PZTImage& t_imgO, uint8_t t_offset, LightDark Light_Dark)
+	{
+		bool res = true;
+		//使用Opencv实现Halcon中的动态阈值
+		//src是原图,灰度图
+		//srcMean是平滑滤波之后的图
+		//最好不要把Offset这个变量设置为0，因为这样会导致最后找到太多很小的regions，而这基本上都是噪声。
+		//所以这个值最好是在5-40之间，值选择的越大，提取出来的regions就会越小。
+
+		//判断
+		if (t_imgI.m_image.empty())
+			return false;
+		if (t_imgI.m_image.type() == CV_8UC3)
+			return false;
+		if (t_thresholdimgI.m_image.empty())
+			return false;
+		if (t_thresholdimgI.m_image.type() == CV_8UC3)
+			return false;
+
+		cv::Mat src = t_imgI.m_image;
+		cv::Mat srcMean = t_thresholdimgI.m_image;
+		cv::Mat result = t_imgO.m_image;
+
+		int r = src.rows; //高
+		int c = src.cols; //宽
+		int Value = 0;
+		for (int i = 0; i < r; i++)
+		{
+			uchar* datasrc = src.ptr<uchar>(i); //指针访问图像像素
+			uchar* datasrcMean = srcMean.ptr<uchar>(i);
+			uchar* dataresult = result.ptr<uchar>(i);
+
+			for (int j = 0; j < c; j++)
+			{
+				switch (Light_Dark)
+				{
+				case Light:
+					Value = datasrc[j] - datasrcMean[j];
+					if (Value >= t_offset)
+					{
+						dataresult[j] = 255;
+					}
+					break;
+				case Dark:
+					Value = datasrcMean[j] - datasrc[j];
+					if (Value >= t_offset)
+					{
+						dataresult[j] = 255;
+					}
+					break;
+				case Equal:
+					Value = datasrc[j] - datasrcMean[j];
+					if (Value >= -t_offset && Value <= t_offset)
+					{
+						dataresult[j] = 255;
+					}
+					break;
+				case Not_equal:
+					Value = datasrc[j] - datasrcMean[j];
+					if (Value < -t_offset || Value > t_offset)
+					{
+						dataresult[j] = 255;
+					}
+					break;
+				default:
+					break;
+				}
+			}
+		}
+		t_imgO.m_image = result;
+
+		return res;
+	}
+
+	bool OperatorSet::dev_display(PZTImage t_imgI,std::string WindowName)
+	{
+		bool res = true;
+		if (t_imgI.m_image.empty())
+			return false;
+
+		cv::imshow(WindowName, t_imgI.m_image);
+
+		
+		int keyValue = cv::waitKey(10);
+
+		if (keyValue && 0xFF == '27')
+			exit(0);
+		else
+			cv::waitKey(0);
+
+		return res;
+	}
+
 	bool TestImgProc() {
 		bool res = false;
 
-		PZTImage img("E:\\1dong\\5-18-ExposureTime3000-normal\\IMG_Light\\BX2.tif");
+		//PZTImage img("E:\\1dong\\5-18-ExposureTime3000-normal\\IMG_Light\\BX2.tif");
+		std::string filename = "E:/img/1122/1122/30.tif";
 		
-
+		PZTImage MiniLED,Gray;
+		PZTRegions Threshold_Region;
+		OperatorSet::read_image(MiniLED, filename);
+		OperatorSet::gray_image(MiniLED, Gray);
+		OperatorSet::threshold(Gray, Threshold_Region, 144, 255);
+		OperatorSet::dev_display(MiniLED, "MiniLED");
 
 		return res;
 	}
