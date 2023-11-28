@@ -11,9 +11,12 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <algorithm>
 #include <iostream>
 
 namespace PZTIMAGE {
+
+	#define APPROXIMATION_ACCURACY		3
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// brief:
@@ -22,9 +25,9 @@ namespace PZTIMAGE {
 	enum StructElement { STRUCTELEMENT_RECTANGLE = 0, STRUCTELEMENT_CROSS, STRUCTELEMENT_CIRCLE };
 
 	typedef struct RegionFeature {
-		// !
-		double 					m_area;
-		double 					m_circularity;
+		// ! 考虑内存对齐
+		float 					m_area;
+		float 					m_circularity;
 		unsigned int 			m_row;
 		unsigned int 			m_col;
 		float					m_outerRadius;
@@ -47,6 +50,7 @@ namespace PZTIMAGE {
 	public:
 		PZTImage();
 		PZTImage(const PZTImage& t_other);
+		PZTImage(PZTImage&& t_other);
 		PZTImage& operator = (const PZTImage& t_other);
 		PZTImage& operator = (PZTImage&& t_other);
  		~PZTImage();
@@ -55,6 +59,21 @@ namespace PZTIMAGE {
 		* param0[i]: The path of the image to be read.
 		*/
 		PZTImage(const std::string& t_filePath);
+
+		/* 
+		* param0[i]: the input image.
+		* param1[i]: the input mark. The default mask is the whole image.
+		*/
+		PZTImage(const cv::Mat& t_img, const cv::Mat& t_mask = cv::Mat());
+		PZTImage(const cv::Mat& t_img, cv::Mat&& t_mask = cv::Mat());
+
+		/*
+		* no practical purpose!!!! 只处理两个图片相交区域
+		*/
+		PZTImage operator - (const PZTImage& t_other) const;
+		PZTImage operator + (const PZTImage& t_other) const;
+		PZTImage operator - (uint8_t t_val) const;
+		PZTImage operator + (uint8_t t_val) const;
 		
 	public:
 		/* 
@@ -62,12 +81,28 @@ namespace PZTIMAGE {
 		*/
 		bool Empty() const;
 
+		/*
+		* brief    : Creates a full copy.
+		*/
+		PZTImage Clone() const;
+
+		/* 
+		* brief    : Return the number of image channels.
+		*/
+		int Channels() const;
+
 		/* 
 		* brief    : Return the size of an image.
 		* param0[o]: The height of an image.
 		* param1[o]: The width of an image.
 		*/
 		bool GetImageSize(unsigned int& t_imgRow, unsigned int& t_imgCol) const;
+
+		/* 
+		* brief    : Return the size of an image.
+		* param0[o]: The size(width/col, height/row) of an image.
+		*/
+		bool GetImageSize(cv::Size2i& t_size) const;
 
 		/* 
 		* brief    : Convert 3 images with one channel into a three-channel image.
@@ -83,7 +118,30 @@ namespace PZTIMAGE {
 		* param1[o]: The 2nd channel.
 		* param2[o]: The 3rd channel.
 		*/
-		bool Decompose(cv::Mat& t_ch0, cv::Mat& t_ch1, cv::Mat& t_ch2);
+		bool Decompose(cv::Mat& t_ch0, cv::Mat& t_ch1, cv::Mat& t_ch2) const;
+
+		/* 
+		* brief    : Convert a three-channel image into three images with one channel.
+		* param0[o]: The 1st channel.
+		* param1[o]: The 2nd channel.
+		* param2[o]: The 3rd channel.
+		*/
+		bool Decompose(PZTImage& t_ch0, PZTImage& t_ch1, PZTImage& t_ch2) const;
+
+		/* 
+		* brief    : Smooth by averaging.
+		* param0[i]: Width of filter mask.
+		* param1[i]: Height of filter mask.
+		*/
+		bool Mean(uint32_t t_maskWidth, uint32_t t_maskHeight);
+
+		/* 
+		* brief    : Segment an image with one channel using global threshold.
+		* param0[o]: The output region meeting the condition.
+		* param1[i]: Lower threshold for the gray values.
+		* param2[i]: Upper threshold for the gray values.
+		*/
+		bool Threshold(PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray) const;
 
 		/* 
 		* brief    : Reduce the image with reduced definition domain.
@@ -95,6 +153,16 @@ namespace PZTIMAGE {
 		* brief    : Transform an RGB image into a gray scale image.
 		*/
 		bool RGB2Gray();
+
+		/* 
+		* brief    : Transform an image from an color space to another color space.
+		* test     : to do.
+		*/
+		bool ChangeColorSpace(TransColorSpace t_color);
+
+		void Display();
+
+	private:
 
 	private:
 		cv::Mat 										m_image;
@@ -130,7 +198,8 @@ namespace PZTIMAGE {
 		/*
 		* param0[i]: labeled region. The grayscale value i represents the i-th connected domain.
 		*/
-		PZTRegions(cv::Mat t_reg);
+		PZTRegions(const cv::Mat& t_reg);
+		PZTRegions(cv::Mat&& t_reg);
 
 		/*
 		* param0[i]: The reference template.
@@ -138,11 +207,30 @@ namespace PZTIMAGE {
 		*/
 		PZTRegions(const PZTRegions& t_reg, const std::vector<uint32_t>& t_indexs);
 
+
+		PZTRegions operator + (const PZTRegions& t_other) const;
+
 	public:
+		/* 
+		* brief    : Clear all connected domains, but still ramain memory from m_regions.
+		*/
+		bool Clear();
+
 		/* 
 		* brief    : Determine whether the object is empty.
 		*/
 		bool Empty() const;
+
+		/*
+		* brief    : Get the class member(m_regionNum)
+		*/
+		unsigned int GetRegionNum() const;
+
+		/* 
+		* brief    : Return the size of container storing the detail of regions.
+		* param0[o]: The size(width/col, height/row) of the container.
+		*/
+		bool GetRegionSize(cv::Size2i& t_size) const;
 
 		/* 
 		* brief    : Return features of a connected domain.
@@ -156,7 +244,14 @@ namespace PZTIMAGE {
 		* param1[i]: Shape features to be checked.
 		* return   : The value of feature.
 		*/
-		double GetRegionFeature(unsigned int t_index, FeatureType t_type);
+		float GetRegionFeature(unsigned int t_index, FeatureType t_type);
+
+		/*
+		* brief    : Translate a region.
+		* param0[i]: Row coordinate of the vector by which the region is to be moved.
+		* param1[i]: Col coordinate of the vector by which the region is to be moved.
+		*/
+		bool MoveRegion(int t_row, int t_col);
 
 		/*
 		* brief    : Compute connected components of a region.
@@ -174,16 +269,20 @@ namespace PZTIMAGE {
 		bool FillUp();
 
 		/*
-		* brief    : Erode a region. *** m_regionNum must be 1 ***
+		* brief    : Transform the shape of a region.  目前只实现 rectangle1
+		* param0[i]: Type of transformation.
+		*/
+		bool ShapeTrans(ShapeTransType t_type);
+
+		/*
+		* brief    : Morphological processing. *** m_regionNum must be 1 ***
 		* param0[i]: Structuring element, such as rectangle, circle.
 		* param1[i]: The size of Structuring element, such as 3×3、5×5、7×7.
 		*/
-		bool Erosion(StructElement t_elm, unsigned int t_kernelLen = 3);
+		bool Erosion(StructElement t_elm, unsigned int t_kernelWidth = 3, unsigned int t_kernelHeight = 3);
+		bool Dilation(StructElement t_elm, unsigned int t_kernelWidth = 3, unsigned int t_kernelHeight = 3);
+		bool Opening(StructElement t_elm, unsigned int t_kernelWidth = 3, unsigned int t_kernelHeight = 3);
 
-		/*
-		* brief    : Get the class member(m_regionNum)
-		*/
-		unsigned int GetRegionNum() const;
 
 		void DisplayRegion();
 
