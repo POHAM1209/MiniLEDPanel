@@ -160,7 +160,7 @@ namespace PZTIMAGE {
 		*/
 		bool ChangeColorSpace(TransColorSpace t_color);
 
-		void Display();
+		void DisplayImage(float t_factor = 1);
 
 	private:
 
@@ -284,7 +284,7 @@ namespace PZTIMAGE {
 		bool Opening(StructElement t_elm, unsigned int t_kernelWidth = 3, unsigned int t_kernelHeight = 3);
 
 
-		void DisplayRegion();
+		void DisplayRegion(float t_factor = 1);
 
 	private:
 		bool _UpdataRegionNum();

@@ -58,7 +58,7 @@ namespace PZTIMAGE {
 		// m_image
 		cv::Mat tmpImg = m_image - t_other.m_image;
 
-		return PZTImage(std::move(tmpImg), std::move(tmpMask));
+		return PZTImage(std::move(tmpImg), tmpMask - 1);
 	}
 
 	PZTImage PZTImage::operator + (const PZTImage& t_other) const{
@@ -76,7 +76,7 @@ namespace PZTIMAGE {
 		// m_image
 		cv::Mat tmpImg = m_image + t_other.m_image;
 
-		return PZTImage(std::move(tmpImg), std::move(tmpMask));
+		return PZTImage(std::move(tmpImg), tmpMask - 1);
 	}
 
 	PZTImage PZTImage::operator - (uint8_t t_val) const{
@@ -223,7 +223,7 @@ namespace PZTIMAGE {
 		cv::Mat thr;
 		// cv::inRange Formula : dst(I)=lowerb(I) ≤ src(I) ≤ upperb(I)
 		cv::inRange(m_image, cv::Scalar(t_minGray), cv::Scalar(t_maxGray), thr);
-		thr -= 244;
+		cv::threshold(thr, thr, t_minGray - 1, 1, cv::THRESH_BINARY);
 
 		t_reg = PZTRegions( std::move(thr) );
 
@@ -287,9 +287,14 @@ namespace PZTIMAGE {
 		return true;
 	}
 
+	void PZTImage::DisplayImage(float t_factor){
+		// 
+		if(m_image.empty())
+			return;
 
-	void PZTImage::Display(){
-		cv::imshow("m_regions", m_image);
+		cv::Mat tmp;
+		cv::resize(m_image, tmp, cv::Size(m_image.cols * t_factor, m_image.rows * t_factor));
+		cv::imshow("m_image", tmp);
 		cv::waitKey(0);	
 	}
 
@@ -362,7 +367,8 @@ namespace PZTIMAGE {
 				index = indexsCpy[idx];
 				m_featuresPtr->push_back( (*t_reg.m_featuresPtr)[index] );
 				cv::inRange(t_reg.m_regions, cv::Scalar(index + 1), cv::Scalar(index + 1), tmp);
-				tmp = tmp - 255 + index + 1;		
+				cv::threshold(tmp, tmp, index, 1, cv::THRESH_BINARY);
+				tmp = tmp + index;		
 				m_regions += tmp;
 			}
 
@@ -371,7 +377,8 @@ namespace PZTIMAGE {
 			for(idx = 0; idx < m_regionNum; ++idx){
 				index = indexsCpy[idx];
 				cv::inRange(t_reg.m_regions, cv::Scalar(index + 1), cv::Scalar(index + 1), tmp);
-				tmp = tmp - 255 + index + 1;
+				cv::threshold(tmp, tmp, index, 1, cv::THRESH_BINARY);
+				tmp = tmp + index;	
 				m_regions += tmp;
 			}
 		}
@@ -524,7 +531,7 @@ namespace PZTIMAGE {
 		// confirm m_regions
 		if(m_regions.empty())
 			return false;
-			
+
 		cv::Matx23f m(1, 0, t_col, 0, 1, t_row);
 		cv::warpAffine(m_regions, m_regions, m, cv::Size(m_regions.cols, m_regions.rows), cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0));
 
@@ -544,7 +551,7 @@ namespace PZTIMAGE {
 
 		cv::Mat tmp16;
 		// connectedComponents param1(8 bit) and param2(16 or 32 bit)   type deferent
-		auto regionNum = cv::connectedComponents(m_regions, tmp16, 8, CV_16U);
+		auto regionNum = cv::connectedComponents(m_regions, m_regions, 8, CV_16U);
 		if(regionNum > 255)
 			return false;
 		else{
@@ -553,6 +560,8 @@ namespace PZTIMAGE {
 			m_isRegionChanged = true;
 			return true;
 		}
+
+		//cv::InputArray
 	}
 
 	bool PZTRegions::Disconnection(){
@@ -678,17 +687,22 @@ namespace PZTIMAGE {
 		return m_regionNum;
 	}
 
+	void PZTRegions::DisplayRegion(float t_factor){
+		if(m_regions.empty())
+			return;
+
+		cv::Mat tmp;
+		cv::resize(m_regions, tmp, cv::Size(m_regions.cols * t_factor, m_regions.rows * t_factor));
+		cv::imshow("m_regions", tmp * 40);
+		cv::waitKey(0);
+	}
+
 	bool PZTRegions::_UpdataRegionNum(){
 		double maxValue = 0;
 		cv::minMaxLoc(m_regions, nullptr, &maxValue, nullptr, nullptr);
 		m_regionNum = maxValue;
 		
 		return true;
-	}
-
-	void PZTRegions::DisplayRegion(){
-		cv::imshow("m_regions", m_regions * 40);
-		cv::waitKey(0);
 	}
 
 	bool PZTRegions::_UpdataRegionFeatures(){
@@ -778,11 +792,29 @@ namespace PZTIMAGE {
 		return false;
 	}
 	
+	class Base {
+	public:
+		enum {
+			row = 10,
+			col = 11
+		} ;
+
+		Base() {
+			int b = 1 + row;
+		}
+
+		static int roww;
+		static int colw;
+	};
+
+	int Base::roww = 11;
+	int Base::colw = 11;
+
 	bool TestCore() {
 		bool res = false;
 
 		// 测试 trans_shape() 
-
+/*
 		cv::Mat reg = cv::imread("./connectedDomain.jpg");
 		cv::cvtColor(reg, reg, cv::COLOR_RGB2GRAY);
 
@@ -819,8 +851,13 @@ namespace PZTIMAGE {
 		//cv::imshow("imgO", imgI);
 		//cv::waitKey(0);
 
+		Base a;
+		std::cout << sizeof(a);
 
+		cv::Mat reg = cv::imread("./connectedDomain.jpg");
+		cv::_InputArray bb(reg);
 
+		bb.size();
 
 		return res;
 	}
