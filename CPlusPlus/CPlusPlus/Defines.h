@@ -20,7 +20,7 @@ namespace PZTIMAGE{
 	/*
 	* Extract light, dark or similar areas? It is used for the image operator dyn_threshold().
 	*/ 
-	enum LightDark {LIGHTDARK_LIGHT = 0, LIGHTDARK_DARK};
+	enum PM_LightDark {LIGHTDARK_LIGHT = 0, LIGHTDARK_DARK};
 
 	/*
 	* Bayer image format used for the image operator, such as cfa_to_rgb().
@@ -40,6 +40,11 @@ namespace PZTIMAGE{
 		TRANSCOLORSPACE_BayerGR2RGB,
 		TRANSCOLORSPACE_BayerRG2RGB,
 		TRANSCOLORSPACE_BayerGB2RGB};
+
+	// Dong
+
+	//dyn_threshold所需
+	enum Light_Dark { Light = 0, Dark, Equal, Not_equal };
 
 }
 

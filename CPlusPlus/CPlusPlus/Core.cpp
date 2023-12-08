@@ -551,7 +551,7 @@ namespace PZTIMAGE {
 
 		cv::Mat tmp16;
 		// connectedComponents param1(8 bit) and param2(16 or 32 bit)   type deferent
-		auto regionNum = cv::connectedComponents(m_regions, m_regions, 8, CV_16U);
+		auto regionNum = cv::connectedComponents(m_regions, tmp16, 8, CV_16U);
 		if(regionNum > 255)
 			return false;
 		else{
@@ -688,7 +688,7 @@ namespace PZTIMAGE {
 	}
 
 	void PZTRegions::DisplayRegion(float t_factor){
-		if(m_regions.empty())
+		if (m_regions.empty())
 			return;
 
 		cv::Mat tmp;
