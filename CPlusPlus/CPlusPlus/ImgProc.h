@@ -8,19 +8,19 @@
 
 #define PARAM_IN
 #define PARAM_OUT
+/*------------------------错误记录:enum在namespace内出现枚举重定义错误，将enum移出namespace即可----------------------------*/
+//shape_trans所需
+enum ShapeTransType
+{
+	SHAPETRANS_RECTANGLE = 0,	//平行于坐标轴的最小外接矩形
+	SHAPETRANS_CIRCLE,		//最小外接圆
+	SHAPETRANS_CONVER		//凸包
+};
+
+//dyn_threshold所需
+enum Light_Dark { Light = 0, Dark, Equal, Not_equal };
 
 namespace PZTIMAGE {
-	//shape_trans所需
-	enum ShapeTransType
-	{
-		SHAPETRANS_RECTANGLE = 0,	//平行于坐标轴的最小外接矩形
-		SHAPETRANS_CIRCLE,		//最小外接圆
-		SHAPETRANS_CONVER		//凸包
-	};
-
-	//dyn_threshold所需
-	enum LightDark{ Light = 0,Dark,Equal,Not_equal };
-
 	class OperatorSet {
 	public:
 		//
@@ -40,10 +40,10 @@ namespace PZTIMAGE {
 		/*brief:阈值分割
 		* param0[i]:输入image			灰度图像
 		* param1[o]:输出region			二值化图像，0或者255
-		* param2[i]:最小阈值
-		* param3[i]:最大阈值
+		* param2[i]:像素阈值大小，取大于
+		* param3[i]:给 大于像素阈值的像素区域 赋值，大于部分均为该值
 		*/
-		static bool threshold(PZTImage t_imgI, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray);
+		static bool threshold(PZTImage t_imgI, PZTRegions& t_reg, uint8_t t_threshold, uint8_t t_maxGray);
 
 		/*brief:连通域分割
 		* param0[i]:输入region
@@ -120,27 +120,37 @@ namespace PZTIMAGE {
 		* param3[i]:offset值 补偿，一般设为5-40之间
 		* param4[i]:分割结果条件选择，默认Light为大于阈值图片
 		*/
-		static bool dyn_threshold(PZTImage t_imgI, PZTImage t_thresholdimgI, PZTImage& t_imgO, uint8_t t_offset, LightDark Light_Dark);
+		static bool dyn_threshold(PZTImage t_imgI, PZTImage t_thresholdimgI, PZTRegions& t_regO, uint8_t t_offset, Light_Dark Light_Dark);
 
-		static bool dev_display(PZTImage t_imgI, std::string WindowName);
+		static bool display_image(PZTImage t_imgI, std::string WindowName,bool save);
 
+		static bool display_region(PZTRegions t_regI, float multiple);
+
+		static bool opening_rectangle1(PZTRegions t_regI, PZTRegions& t_regO, uint8_t t_Width, uint8_t t_Height);
+		static bool opening_circle(PZTRegions t_regI, PZTRegions& t_regO, uint8_t radius);
+		static bool dilation_rectangle1(PZTRegions t_regI, PZTRegions& t_regO, uint8_t t_Width, uint8_t t_Height);
+
+		static bool move_region(PZTRegions t_regI, PZTRegions& t_regO, int rows, int cols);
+
+		static bool union2(PZTRegions t_regI1, PZTRegions t_regI2 ,PZTRegions& t_regO);
+		static bool union1(PZTRegions t_regI, PZTRegions& t_regO);
+		static bool shape_trans(PZTRegions t_regI, PZTRegions& t_regO, ShapeTransType t_type);
+
+		static bool difference(PZTRegions t_regI1, PZTRegions t_regI2, PZTRegions& t_regO);
+
+		static bool region_features(PZTRegions t_regI, Features t_fea, int& Value);
 		/*---------------------------------------新增----------------------------------------*/
 		/*brief:
 		*
 		*/
-		static bool shape_trans(PZTRegions t_regI, PZTRegions& t_regO, ShapeTransType t_type);
-		static bool region_features();
-		static bool move_region();
-		static bool union1();
-		static bool union2();
-		static bool opening_rectangle1();
-		static bool dilation_rectangle1();
-		static bool difference();
-
-		/*obj类型是否加入？*/
-		static bool count_obj();
-		static bool concat_obj();
-		static bool select_obj();
+		
+		
+		//region取反
+		static bool complement(PZTRegions t_regI, PZTRegions& t_regO);
+		//region叠加,是否需要image与region叠加,目前不需要
+		static bool concat_region(PZTRegions t_regI, PZTRegions& t_regO);
+		//region之间的交集
+		static bool intersection(PZTRegions t_regI1, PZTRegions t_regI2, PZTRegions& t_regO);
 	};
 
 	bool TestImgProc();
