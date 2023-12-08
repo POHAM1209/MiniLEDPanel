@@ -505,7 +505,6 @@ namespace PZTIMAGE {
 			m_featuresPtr->reserve(m_regionNum);
 		}
 			
-
 		if(m_featuresPtr->size() == 0 || m_isRegionChanged){
 			if(!_UpdataRegionFeatures())
 				return 0;
@@ -687,14 +686,17 @@ namespace PZTIMAGE {
 		return m_regionNum;
 	}
 
-	void PZTRegions::DisplayRegion(float t_factor){
-		if (m_regions.empty())
+	void PZTRegions::DisplayRegion(float t_factor, bool t_isWrite , const std::string& t_name){
+		if(m_regions.empty())
 			return;
 
 		cv::Mat tmp;
 		cv::resize(m_regions, tmp, cv::Size(m_regions.cols * t_factor, m_regions.rows * t_factor));
 		cv::imshow("m_regions", tmp * 40);
 		cv::waitKey(0);
+
+		if(t_isWrite)
+			cv::imwrite(t_name, m_regions * 40);
 	}
 
 	bool PZTRegions::_UpdataRegionNum(){
@@ -749,15 +751,18 @@ namespace PZTIMAGE {
 		m_featuresPtr->clear();
 		m_featuresPtr->reserve(m_regionNum);
 
-		// ...
+		//....
+		std::vector<std::vector<cv::Point>> contours;
+		cv::findContours(m_regions, contours, cv::RETR_LIST, cv::CHAIN_APPROX_NONE); // 不建立层次结构
+
 		cv::Mat oneRegion;
 		RegionFeature trait;
 		for(unsigned int idx = 1; idx <= m_regionNum; ++idx){
-			// 获得每个连通域
-			oneRegion = m_regions - idx;
-			cv::threshold(oneRegion, oneRegion, 0, 1, cv::THRESH_BINARY_INV);
+			// 获得各个连通域
+			cv::inRange(m_regions, idx, idx, oneRegion);
+			oneRegion = oneRegion + (1 - idx);
 
-			// _UpdataOneRegionFeatures
+			// 更新各个连通域特征
 			trait = _GainOneRegionFeatures(oneRegion);
 
 			m_featuresPtr->push_back(trait);
@@ -767,99 +772,115 @@ namespace PZTIMAGE {
 	}
 
 	RegionFeature PZTRegions::_GainOneRegionFeatures(cv::InputArray t_oneRegion){
-		cv::Mat oneRegion = t_oneRegion.getMat();
-
+		//cv::Mat oneRegion = t_oneRegion.getMat();
 		RegionFeature trait;
 
-		cv::Moments moms = cv::moments(t_oneRegion);
+		// gain outermost contours
+		std::vector<std::vector<cv::Point>> contours;
+		cv::findContours(m_regions, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
 
-		// features--area
-		// trait.m_area = (cv::sum(oneRegion))[0];
-		trait.m_area = moms.m00;
+		// gain area 
+		_GainAreaFeature(t_oneRegion, trait);
 
-		// features--col
-		trait.m_col = moms.m10 / moms.m00;
+		// gain contours length
+		_GainContlengthFeature(contours[0], trait);
 
-		// features--row
-		trait.m_row = moms.m01 / moms.m00;
+		// gain circularity
+		_GainCircularityFeature(contours[0], trait);
 
-		return RegionFeature();
+		// gain the center of mass(row, col)
+		_GainMassCenterFeature(contours[0], trait);
+
+		// .... 内接圆/外接圆 半径   圆度计算有问题 area
+
+		return trait;
 	}
 
-	bool PZTRegions::_UpdataRegions(){
-		//cv::threshold(m_regions, )
+	bool PZTRegions::_GainAreaFeature(cv::InputArray t_oneRegion, RegionFeature& t_features){
+		cv::Mat m = t_oneRegion.getMat();
+		cv::Scalar areaVal = cv::sum(m);
+		t_features.m_area = areaVal[0];
 
-		return false;
+		return true;
 	}
-	
-	class Base {
-	public:
-		enum {
-			row = 10,
-			col = 11
-		} ;
 
-		Base() {
-			int b = 1 + row;
-		}
+	bool PZTRegions::_GainContlengthFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features){
+		t_features.m_contlength = cv::arcLength(t_contours, true);
 
-		static int roww;
-		static int colw;
-	};
+		return true;
+	}
 
-	int Base::roww = 11;
-	int Base::colw = 11;
+	bool PZTRegions::_GainCircularityFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features){
+		cv::Moments moms = cv::moments(t_contours);
+		t_features.m_circularity = 4 * CV_PI * moms.m00 / (t_features.m_contlength * t_features.m_contlength);
+
+		return true;
+	}
+
+	bool PZTRegions::_GainMassCenterFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features){
+		cv::Moments moms = cv::moments(t_contours);
+
+		t_features.m_col = moms.m10 / moms.m00;
+		t_features.m_row = moms.m01 / moms.m00;
+
+		return true;
+	}
 
 	bool TestCore() {
 		bool res = false;
-
-		// 测试 trans_shape() 
-/*
-		cv::Mat reg = cv::imread("./connectedDomain.jpg");
-		cv::cvtColor(reg, reg, cv::COLOR_RGB2GRAY);
-
-		cv::threshold(reg, reg, 100, 1, cv::THRESH_BINARY);
-
-		PZTRegions obj(reg);
-		obj.DisplayRegion();
-
-		obj.ShapeTrans(ShapeTransType::SHAPETRANSTYPE_RECTANGLE1);
-		obj.DisplayRegion();
-
-		obj.MoveRegion(50, 60);
-		obj.DisplayRegion();
-
-/*
-		obj.Connection();
-		//obj.DisplayRegion();
-
-		//RegionFeature feature = obj.GetRegionFeature(0);
-
-		// 测试 threshold()
-		PZTImage img("./connectedDomain.jpg");
-
-		PZTImage imgO;
-		PZTRegions regO;
-*/
-		// 测试 cvtColor() 输入bayer图像是否为 3 通道
-		//auto imgI = cv::imread("./connectedDomain.jpg");
-
-		//cv::Mat imgO(imgI);
-
-		//cv::threshold(imgO, imgO, 122, 255, cv::THRESH_BINARY_INV);
-
-		//cv::imshow("imgO", imgI);
-		//cv::waitKey(0);
-
-		Base a;
-		std::cout << sizeof(a);
-
-		cv::Mat reg = cv::imread("./connectedDomain.jpg");
-		cv::_InputArray bb(reg);
-
-		bb.size();
+		
+		HalconDetection();
 
 		return res;
+	}
+
+	// 缺少 bayer 转 rgb
+	bool HalconDetection(){
+		// Set Configure
+		std::string imgPath = "./small_bayer.bmp";
+
+		
+		// Step 0
+		uint32_t imgWidth = 0, imgHeight = 0;
+
+		PZTImage imgRGB(imgPath);
+		imgRGB.ChangeColorSpace(TransColorSpace::TRANSCOLORSPACE_RGB2GRAY);
+		imgRGB.GetImageSize(imgHeight, imgWidth);
+
+		// Step 1
+		uint8_t whiteChipMinGrayValue = 240;
+		uint32_t noiseSize = 30;
+		uint32_t AOISize = 120;
+		uint32_t chipHorizontalDistance = 1700;
+		uint32_t chipVerticalDistance = 1700;
+
+		PZTRegions chipRegion;
+
+		imgRGB.Threshold(chipRegion, whiteChipMinGrayValue, 255);
+		chipRegion.FillUp();
+		chipRegion.Opening(StructElement::STRUCTELEMENT_RECTANGLE, noiseSize, noiseSize);
+		chipRegion.ShapeTrans(ShapeTransType::SHAPETRANSTYPE_RECTANGLE1);
+		chipRegion.Dilation(StructElement::STRUCTELEMENT_RECTANGLE, AOISize, AOISize);
+
+		PZTRegions chipAOIDown, chipAOIUp, chipAOIRight, chipAOILeft;
+		chipAOIDown = chipAOIUp = chipAOIRight = chipAOILeft = chipRegion;
+
+		chipAOIDown.MoveRegion(1700, 0);
+		chipAOIUp.MoveRegion(-1700, 0);
+		chipAOIRight.MoveRegion(0, 1700);
+		chipAOILeft.MoveRegion(0, -1700);
+
+		PZTRegions RegAOI = chipAOIDown + chipAOIUp + chipAOIRight + chipAOILeft;
+
+		// Step 2
+		RegAOI.Connection();
+
+		for(int i = 0; i < RegAOI.GetRegionNum(); ++i){
+
+		}
+
+
+		return true;
 	}
 
 }

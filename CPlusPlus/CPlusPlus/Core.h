@@ -7,6 +7,8 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/core/hal/hal.hpp>
+#include <opencv2/core/ocl.hpp>
 
 #include <string>
 #include <vector>
@@ -27,7 +29,8 @@ namespace PZTIMAGE {
 	typedef struct RegionFeature {
 		// ! 考虑内存对齐
 		float 					m_area;
-		float 					m_circularity;
+		float					m_contlength;			// 连通域最外轮廓的总长
+		float 					m_circularity;			// 连通域最外轮廓的圆度
 		unsigned int 			m_row;
 		unsigned int 			m_col;
 		float					m_outerRadius;
@@ -283,18 +286,19 @@ namespace PZTIMAGE {
 		bool Dilation(StructElement t_elm, unsigned int t_kernelWidth = 3, unsigned int t_kernelHeight = 3);
 		bool Opening(StructElement t_elm, unsigned int t_kernelWidth = 3, unsigned int t_kernelHeight = 3);
 
-
-		void DisplayRegion(float t_factor = 1);
+		void DisplayRegion(float t_factor = 1, bool t_isWrite = false, const std::string& t_name = "m_regions.bmp");
 
 	private:
 		bool _UpdataRegionNum();
-		bool _UpdataRegionFeatures();
-		bool _UpdataRegions();
+		bool _UpdataRegionFeatures(); // only for blob, (hole sad) contlength
 
-
+		//
 		bool _UpdataRegionsFeaturesV2();
 		RegionFeature _GainOneRegionFeatures(cv::InputArray t_oneRegion);
-
+		bool _GainAreaFeature(cv::InputArray t_oneRegion, RegionFeature& t_features);
+		bool _GainContlengthFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features);
+		bool _GainCircularityFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features);
+		bool _GainMassCenterFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features);
 
 	private:
 		/* ! The data container. There are followed details.
@@ -317,6 +321,8 @@ namespace PZTIMAGE {
 	};
 
 	bool TestCore();
+
+	bool HalconDetection();
 
 }
 
