@@ -27,11 +27,13 @@ namespace PZTIMAGE {
 
 		return res;
 	}
-
+	
 	bool OperatorSet::threshold(PZTImage t_imgI, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray) {
 		bool res = true;
 
 		if (t_imgI.m_image.empty())
+			return false;
+		if (t_imgI.m_image.type() == CV_8UC3)
 			return false;
 		
 		cv::Mat i_image = t_imgI.m_image;
@@ -57,7 +59,6 @@ namespace PZTIMAGE {
 			//需要变量来接收，还是直接在函数里改了? 
 			t_reg.GetRegionFeature(i);
 		}
-		std::cout << t_reg.GetRegionNum();
 		t_regs = t_reg;					//输出
 		return res;
 	}
@@ -70,7 +71,6 @@ namespace PZTIMAGE {
 		if (t_imgI.m_image.type() == CV_8UC3)
 			return false;
 
-		//做法：返回image，所以直接container相减？等于是矩阵相减
 		t_imgI.ReduceDomain(t_reg);
 		t_imgO = t_imgI;
 		return res;
@@ -115,11 +115,12 @@ namespace PZTIMAGE {
 				break;
 			}
 		}
-		if (indexs.size() > 255)
+		if(indexs.empty())
 		{
-			std::cout << "数量超过255!" << std::endl;
-			return 0;
+			std::cout << "数量为0" << std::endl;
+			return false;
 		}
+		//t_regI.DisplayRegion();
 		PZTRegions result(t_regI, indexs);
 		t_regO = result;
 
@@ -130,8 +131,6 @@ namespace PZTIMAGE {
 		bool res = true;
 
 		if (t_imgI.m_image.empty())
-			return false;
-		if (t_imgI.m_image.type() == CV_8UC3)
 			return false;
 
 		//公式res := round((orig - mean) * Factor) + orig
@@ -222,6 +221,28 @@ namespace PZTIMAGE {
 	bool OperatorSet::area_center(PZTRegions t_regI, int& t_area, cv::Point2f& t_point)
 	{
 		bool res = true;
+
+		return res;
+	}
+
+	bool OperatorSet::get_image_size(PZTImage t_imgI, unsigned int& width, unsigned int& height)
+	{
+		bool res = true;
+		if (t_imgI.m_image.empty())
+			return false;
+		t_imgI.GetImageSize(width,height);
+
+		return res;
+	}
+
+	bool OperatorSet::decompose3(PZTImage t_imgI, PZTImage& t_imgR, PZTImage& t_imgG, PZTImage& t_imgB)
+	{
+		bool res = true;
+		if (t_imgI.m_image.empty())
+			return false;
+		if (t_imgI.m_image.type() != CV_8UC3)
+			return false;
+		t_imgI.Decompose(t_imgR, t_imgG, t_imgB);
 
 		return res;
 	}
@@ -447,13 +468,16 @@ namespace PZTIMAGE {
 		return res;
 	}
 
-	bool OperatorSet::display_image(PZTImage t_imgI,std::string WindowName,bool save)
+	bool OperatorSet::display_image(PZTImage t_imgI,std::string WindowName,bool save,bool diplay)
 	{
 		bool res = true;
 		if (t_imgI.m_image.empty())
 			return false;
-
-		cv::Mat show_image = t_imgI.m_image;
+		cv::Mat show_image;
+		if (diplay)
+			show_image = t_imgI.m_image;
+		else
+			show_image = t_imgI.m_mask;
 		if (save)
 			cv::imwrite("./save.jpg", show_image);
 		int width = show_image.size().width;
@@ -484,6 +508,14 @@ namespace PZTIMAGE {
 		else
 			cv::waitKey(0);
 
+		return res;
+	}
+
+	bool OperatorSet::display_image(PZTImage t_imgI) {
+		bool res = true;
+
+		cv::imshow("test", 60* t_imgI.m_mask);
+		cv::waitKey(0);
 		return res;
 	}
 
@@ -523,35 +555,63 @@ namespace PZTIMAGE {
 		//OperatorSet::display_region(Trans, 0.1);
 		////OperatorSet::display_region(Dilation, 0.1);
 
-		/***************************复现*******************************/
-		//std::string filename = "E:/img/1122/1122/25.tif";
-		std::string filename = "C:\\Users\\a\\Desktop\\images\\30_13.gif";
-		PZTImage Image ,Gray ,Mean;
-		PZTRegions Background ,MiniLED , Connection,Union, Dynthreshold, Opening,Move;
-		
-		//阈值分割数据
-		uint8_t background = 120;		//背景的最大阈值
-		uint8_t miniled = 170;			//芯片反光区域的最小阈值
+		///***************************复现*******************************/
+		//std::string filename = "E:/img/1122/1122/26.tif";
+		//
+		//PZTImage Image ,Gray ,Mean;
+		//PZTRegions Background ,MiniLED , Connection,Union, Dynthreshold, Opening,Move;
+		//
+		////阈值分割数据
+		//uint8_t background = 120;		//背景的最大阈值
+		//uint8_t miniled = 170;			//芯片反光区域的最小阈值
 
-		//预处理
+		////预处理
+		//OperatorSet::read_image(Image, filename);
+		//OperatorSet::gray_image(Image, Gray);
+		////OperatorSet::threshold(Gray, Background, 0, 120);
+		//OperatorSet::threshold(Gray, MiniLED, 170, 255);
+
+		////边界确定   -->   芯片剔除
+		////OperatorSet::connection(MiniLED, Connection);		//connection之后Num还是1,原因是Num数量超出255，uchar的限制
+		////OperatorSet::select_shape(Background, Background, FEATURES_AREA, 120000, 99999999);	//出错,原因为indexs为0无法构造
+		////OperatorSet::union1(Connection, Union);
+		//OperatorSet::mean_image(Gray, Mean, 30, 30);
+		//OperatorSet::dyn_threshold(Gray, Mean, Dynthreshold, 7, Dark);
+		//OperatorSet::opening_rectangle1(Dynthreshold, Opening,10,10);		//无效果,原因为dyn时设置的灰度值为255，改为1
+		////OperatorSet::move_region(Dynthreshold, Move, 1000, 1000);
+
+		////效果显示
+		//OperatorSet::display_image(Mean, "mean", 0,1);
+		////OperatorSet::display_region(Connection, 0.1);
+		//OperatorSet::display_region(Opening, 0.1);
+
+		/***************复现简单图像(缺陷数量少的图像)******************/
+		//变量部分
+		std::string filename = "E:/1dong/5-18-ExposureTime3000-normal/test.png";
+		unsigned int width, height;
+
+		//图像部分
+		PZTImage Image,Gray,R,G,B,Emphasize,Reduce,GrayReduce;
+		PZTRegions Region,Threshold,Connection,SelectRegion,Union,Test;
+
+		//算子部分
 		OperatorSet::read_image(Image, filename);
-		OperatorSet::gray_image(Image, Gray);
-		OperatorSet::threshold(Gray, Background, 0, 120);
-		OperatorSet::threshold(Gray, MiniLED, 170, 255);
-
-		//确定边界
-		OperatorSet::connection(Background, Connection);		//connection之后Num还是1,原因是Num数量超出255，uchar的限制
-		//OperatorSet::select_shape(Background, Background, FEATURES_AREA, 120000, 99999999);	//出错
+		//OperatorSet::gray_image(Image, Gray);
+		OperatorSet::get_image_size(Image, width, height);
+		OperatorSet::decompose3(Image, R, G, B);
+		OperatorSet::emphasize(B, Emphasize, 36, 36, 3);
+		OperatorSet::threshold(Emphasize, Threshold, 200, 255);
+		//先做形态学再打散可能少一些缺陷，可能不会出现超出情况
+		OperatorSet::connection(Threshold, Connection);
+		OperatorSet::select_shape(Connection, SelectRegion, FEATURES_AREA, 0, 100);
 		OperatorSet::union1(Connection, Union);
-		OperatorSet::mean_image(Gray, Mean, 30, 30);
-		OperatorSet::dyn_threshold(Gray, Mean, Dynthreshold, 7, Dark);
-		OperatorSet::opening_rectangle1(Dynthreshold, Opening,10,10);		//无效果,原因为dyn时设置的灰度值为255，改为1
-		//OperatorSet::move_region(Dynthreshold, Move, 1000, 1000);
+		OperatorSet::reduce_domain(B, Union, Reduce);
 
-		//效果显示
-		//OperatorSet::display_image(Mean, "mean", 0);
-		OperatorSet::display_region(Background, 0.1);
-		OperatorSet::display_region(Opening, 0.1);
+		//显示部分
+		//OperatorSet::display_image(Reduce);
+		//OperatorSet::display_image(Reduce, "image", 0, 0);
+		OperatorSet::display_region(SelectRegion, 1);
+		OperatorSet::display_region(Connection, 1);
 
 		return res;
 	}
