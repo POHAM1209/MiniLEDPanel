@@ -16,6 +16,8 @@
 #include <algorithm>
 #include <iostream>
 
+//#define HAVE_MULTITHREAD_ACCELERATION
+
 namespace PZTIMAGE {
 
 	#define APPROXIMATION_ACCURACY		3
@@ -28,13 +30,27 @@ namespace PZTIMAGE {
 
 	typedef struct RegionFeature {
 		// ! 考虑内存对齐
+
+		// ! Area of the object
 		float 					m_area;
-		float					m_contlength;			// 连通域最外轮廓的总长
-		float 					m_circularity;			// 连通域最外轮廓的圆度
+		// ! Total length of extreme outer contour
+		float					m_contlength;
+		// ! The circularity of extreme outer contour
+		float 					m_circularity;
+		// ! Row index of the center
 		unsigned int 			m_row;
+		// ! Column index of the center
 		unsigned int 			m_col;
+
 		float					m_outerRadius;
 		float					m_innerRadius;
+
+		// ! Width of the region (parallel to the coordinate axes)
+		float					m_width;
+		// ! Height of the region (parallel to the coordinate axes)
+		float					m_height;
+		// ! Ratio of the height and the width of the region (parallel to the coordinate axes) = height / width
+		float 					m_ratio;
 	}RegionFeature;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -290,15 +306,42 @@ namespace PZTIMAGE {
 
 	private:
 		bool _UpdataRegionNum();
-		bool _UpdataRegionFeatures(); // only for blob, (hole sad) contlength
 
-		//
+		/*
+		* brief: 
+		* 		_UpdataRegionFeaturesV1() : It is only for blob.
+		*    	_UpdataRegionFeaturesV2() : It could be for various connected domains, but is time-consuming.
+		*		_UpdataRegionFeaturesV3() : Adopting multi-threaded technology to speed up.
+		*/
+		bool _UpdataRegionFeaturesV1(); 
+
 		bool _UpdataRegionsFeaturesV2();
-		RegionFeature _GainOneRegionFeatures(cv::InputArray t_oneRegion);
+		RegionFeature _GainOneRegionFeaturesV2(cv::InputArray t_oneRegion);
 		bool _GainAreaFeature(cv::InputArray t_oneRegion, RegionFeature& t_features);
 		bool _GainContlengthFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features);
 		bool _GainCircularityFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features);
 		bool _GainMassCenterFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features);
+		bool _GainBoundingRectangleFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features);
+
+/*
+		bool _UpdataRegionsFeaturesV3(){
+			// ...
+			for(uint32_t idx = 1; idx <= m_regionNum; ++idx){
+				//ThreadPoolObj.enqueue(&PZTRegions::_GainOneRegionFeaturesV3, this, idx);
+			}
+
+			// ThreadPoolObj.join
+		}
+		// 考虑 OpenCV 是否线程安全
+		bool _GainOneRegionFeaturesV3(uint32_t t_idx){
+			// such as
+			cv::Mat oneRegion;
+			cv::inRange(m_regions, t_idx, t_idx, oneRegion);
+			cv::threshold(oneRegion, oneRegion, 0, 1, cv::THRESH_BINARY);
+
+			_GainAreaFeature(oneRegion, (*m_featuresPtr)[t_idx]);
+		}
+*/
 
 	private:
 		/* ! The data container. There are followed details.
@@ -324,6 +367,24 @@ namespace PZTIMAGE {
 
 	bool HalconDetection();
 
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// brief:
+	//	Testing module
+	//
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class Testor{
+	public:
+		static PZTRegions InitMemberComReg();
+		static PZTImage InitMemberComImg();
+		static bool TestFunc_UpdataRegionsFeaturesV2();
+
+	private:
+		static PZTImage									m_comImg;
+
+		// ! PZTRegions object. Its Member m_regionNum is 1.
+		static PZTRegions								m_comReg;
+	};
 }
 
 #endif

@@ -11,7 +11,7 @@ enum TestType {
 
 int main() {
 
-	int type = 1;
+	int type = 0;
 	bool res = false;
 
 	switch (type){
