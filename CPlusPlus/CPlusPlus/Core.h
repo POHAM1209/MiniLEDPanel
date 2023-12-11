@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <iostream>
 
-//#define HAVE_MULTITHREAD_ACCELERATION
+#define HAVE_MULTITHREAD_ACCELERATION
 
 namespace PZTIMAGE {
 
