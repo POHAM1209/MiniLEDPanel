@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="18.11.0.1">
+<procedure name="main">
+<interface/>
+<body>
+<c>*1 测试图片</c>
+<l>*read_image (Image, 'E:/img/1122/1122/20_shadow.tif')</l>
+<l>read_image (Image, 'E:/img/1122/1122/5.tif')</l>
+<l>*read_image(Image, 'E:/1dong/5-18-ExposureTime3000-normal/0.tif')</l>
+<c></c>
+<c></c>
+<c>*2 图像预处理</c>
+<l>whiteChipMinGrayValue := 170             // 芯片白色区域的灰度值</l>
+<l>get_image_size (Image, Width, Height)</l>
+<l>dev_close_window ()</l>
+<l>dev_open_window (0, 0, Width/11, Height/11, 'black', WindowHandle)</l>
+<l>dev_display (Image)</l>
+<l>decompose3 (Image, ImageR, ImageG, ImageB)</l>
+<l>cfa_to_rgb(Image, imageRGBI, 'bayer_gb', 'bilinear')</l>
+<l>rgb1_to_gray (imageRGBI, GrayImage)</l>
+<l>threshold (GrayImage, background, 0, 120)</l>
+<l>threshold (GrayImage, chipRegion, whiteChipMinGrayValue, 255)</l>
+<l>stop()</l>
+<c></c>
+<c></c>
+<c></c>
+<c>*3 获取面板ROI:RegionROI</c>
+<l>noiseSize := 30                          // 阈值后焊锡产生的 "噪音" </l>
+<l>AOISize := 400</l>
+<l>chipDistance := 1700           // 不同单元中的芯片与芯片之间距离</l>
+<l>ChipTinArea:=12000                          //芯片&amp;焊锡的面积</l>
+<l>chip_innerraduis:=40</l>
+<c></c>
+<c></c>
+<c>* 获取背景:background</c>
+<l>connection (background, background)</l>
+<l>select_shape (background, background, 'area', 'and', ChipTinArea*10, 99999999999)</l>
+<l>union1(background, background)</l>
+<c>* 获取灯:light</c>
+<l>connection (chipRegion, light)</l>
+<l>select_shape (light, light, 'area', 'and', ChipTinArea*30, 999999999)</l>
+<l>region_features (light, 'area', Value)</l>
+<c>* 获取面板ROI:RegionROI</c>
+<l>gen_empty_obj (RegionROI)</l>
+<l>if(|Value|!=0)   //有灯</l>
+<l>    concat_obj (RegionROI, light, RegionROI)</l>
+<l>endif</l>
+<l>concat_obj (RegionROI, background, RegionROI)</l>
+<l>union1 (RegionROI,RegionROI)</l>
+<l>closing_circle (RegionROI, RegionROI, 50)</l>
+<l>complement (RegionROI, RegionROI)</l>
+<l>connection (RegionROI, RegionROI)</l>
+<l>region_features (RegionROI, 'area', Value1)</l>
+<c></c>
+<l>test_equal_region(RegionROI, RegionROI, IsEqual)</l>
+<l>if(IsEqual = 1)  </l>
+<l>    select_shape (RegionROI, RegionROI, 'area', 'and', max(Value1),max(Value1)+1)       //有边界</l>
+<l>else</l>
+<l>    RegionROI := GrayImage         //如果背景为空（无边界情况）</l>
+<l>endif</l>
+<l>stop()</l>
+<c></c>
+<c></c>
+<c></c>
+<c>*4 获得面板上所有芯片理论区域:chip_ideal</c>
+<l>closing_circle (chipRegion, Region1, 20)</l>
+<l>connection (Region1, Region1)</l>
+<l>select_shape (Region1, Region1, 'area', 'and', ChipTinArea*0.5, ChipTinArea)</l>
+<l>shape_trans (Region1, Region1, 'rectangle1')</l>
+<l>union1 (Region1, Mask_chip)</l>
+<l>dilation_rectangle1 (Region1, Region1, 300, 300)</l>
+<l>gen_empty_obj (chip_ideal)</l>
+<l>concat_obj (chip_ideal, Region1, chip_ideal)</l>
+<l>move_region (Region1, RegionMoved, chipDistance, 0)</l>
+<l>concat_obj (chip_ideal, RegionMoved, chip_ideal)</l>
+<l>move_region (Region1, RegionMoved, -chipDistance, 0)</l>
+<l>concat_obj (chip_ideal, RegionMoved, chip_ideal)</l>
+<l>move_region (Region1, RegionMoved, 0,chipDistance)</l>
+<l>concat_obj (chip_ideal, RegionMoved, chip_ideal)</l>
+<l>move_region (Region1, RegionMoved, 0, chipDistance)</l>
+<l>concat_obj (chip_ideal, RegionMoved, chip_ideal)</l>
+<l>union1(chip_ideal,chip_ideal)</l>
+<l>intersection (RegionROI, chip_ideal, chip_ideal)</l>
+<l>connection (chip_ideal, chip_ideal)</l>
+<l>select_shape (chip_ideal, chip_ideal, 'area', 'and', ChipTinArea*5, 9999999)</l>
+<l>stop()</l>
+<c></c>
+<c></c>
+<c></c>
+<c>*5 芯片缺陷检测:defect_chip</c>
+<l>chipMinArea := 4000</l>
+<l>chipMaxArea := 6000</l>
+<l>gen_empty_region (defect_chip)</l>
+<c></c>
+<l>count_obj(chip_ideal, chipNum)</l>
+<l>for idx := 1 to chipNum by 1</l>
+<l>    select_obj(chip_ideal, ObjectSelected, idx)</l>
+<c>    </c>
+<c>    * 检测区域是否有效</c>
+<l>    region_features(ObjectSelected, 'inner_radius', innerRadiusValue)</l>
+<c>    </c>
+<l>    if(innerRadiusValue &lt; AOISize * 0.8)</l>
+<l>        continue     </l>
+<l>    endif</l>
+<c>    </c>
+<c>    * 判断芯片是否正常</c>
+<l>    reduce_domain(GrayImage, ObjectSelected, oneChipRegion)</l>
+<l>    threshold(oneChipRegion, oneChipRegion, whiteChipMinGrayValue, 255)</l>
+<l>    * opening_rectangle1(oneChipRegion, oneChipRegion, noiseSize, noiseSize)</l>
+<c>    </c>
+<l>    connection(oneChipRegion, oneChipRegions)</l>
+<l>    area_center(oneChipRegions, area, row, col)</l>
+<l>    tuple_max(area, areaMaxValue)</l>
+<c>    </c>
+<l>    if(areaMaxValue &lt; chipMinArea)</l>
+<l>        lineSize := 5</l>
+<c>        </c>
+<l>        region_features(ObjectSelected, 'row1', row1)</l>
+<l>        region_features(ObjectSelected, 'row2', row2)</l>
+<l>        region_features(ObjectSelected, 'column1', column1)</l>
+<l>        region_features(ObjectSelected, 'column2', column2)</l>
+<c>        </c>
+<l>        gen_rectangle1(RectangleOut, row1, column1, row2, column2)</l>
+<l>        gen_rectangle1(RectangleIn, row1+lineSize, column1+lineSize, row2-lineSize, column2-lineSize)</l>
+<l>        concat_obj (defect_chip,RectangleIn, RectangleIn)</l>
+<l>    endif</l>
+<l>endfor</l>
+<l>stop()</l>
+<c></c>
+<c></c>
+<c></c>
+<c>*6 面板点线缺陷检测:defect_Board</c>
+<c>* 剔除芯片</c>
+<l>dilation_rectangle1 (Mask_chip, Mask_chip, 30, 30)</l>
+<l>difference (RegionROI, Mask_chip, RegionROI_Board)</l>
+<l>reduce_domain (GrayImage, RegionROI_Board, ImageROI_Board)</l>
+<c>* 缺陷检测</c>
+<l>defectMinSize := 7                  // 一般要求 </l>
+<l>defectMaxSize := 20                 // 一般指的是 兼容 线状缺陷宽度 与 阴影尺寸</l>
+<l>dynThrVal := 8                      // 动态阈值参数</l>
+<l>mean_image (ImageROI_Board, ImageMean, defectMaxSize, defectMaxSize)</l>
+<l>dyn_threshold (ImageROI_Board, ImageMean, defect_Board, dynThrVal, 'dark')</l>
+<l>opening_circle (defect_Board, opening, 1)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

@@ -292,8 +292,8 @@ namespace PZTIMAGE {
 		if(m_image.empty())
 			return;
 
-		cv::Mat tmp;
-		cv::resize(m_image, tmp, cv::Size(m_image.cols * t_factor, m_image.rows * t_factor));
+		cv::Mat tmp = m_image.mul(m_mask);
+		cv::resize(tmp, tmp, cv::Size(m_image.cols * t_factor, m_image.rows * t_factor));
 		cv::imshow("m_image", tmp);
 		cv::waitKey(0);	
 	}
@@ -338,7 +338,7 @@ namespace PZTIMAGE {
 		m_isRegionChanged(false)
 	{
 		// confirm t_reg and t_indexs
-		if(t_reg.Empty())
+		if(t_reg.Empty() || t_indexs.size() == 0)
 			return;
 
 		uint32_t regNum = t_reg.GetRegionNum();
@@ -367,8 +367,7 @@ namespace PZTIMAGE {
 				index = indexsCpy[idx];
 				m_featuresPtr->push_back( (*t_reg.m_featuresPtr)[index] );
 				cv::inRange(t_reg.m_regions, cv::Scalar(index + 1), cv::Scalar(index + 1), tmp);
-				cv::threshold(tmp, tmp, index, 1, cv::THRESH_BINARY);
-				tmp = tmp + index;		
+				cv::threshold(tmp, tmp, index, idx + 1, cv::THRESH_BINARY);
 				m_regions += tmp;
 			}
 
@@ -377,8 +376,7 @@ namespace PZTIMAGE {
 			for(idx = 0; idx < m_regionNum; ++idx){
 				index = indexsCpy[idx];
 				cv::inRange(t_reg.m_regions, cv::Scalar(index + 1), cv::Scalar(index + 1), tmp);
-				cv::threshold(tmp, tmp, index, 1, cv::THRESH_BINARY);
-				tmp = tmp + index;	
+				cv::threshold(tmp, tmp, index, idx + 1, cv::THRESH_BINARY);
 				m_regions += tmp;
 			}
 		}
@@ -469,13 +467,21 @@ namespace PZTIMAGE {
 		// That m_featuresPtr is nullptr represents no objects in the container of feature, and 
 		// that m_isRegionChanged is true represents that the shared pointer(m_featuresPtr) is invalid.
 		if(m_featuresPtr == nullptr || m_isRegionChanged){
+#ifndef HAVE_MULTITHREAD_ACCELERATION
 			m_featuresPtr = std::make_shared<std::vector<PZTIMAGE::RegionFeature>>(); 
 			m_featuresPtr->reserve(m_regionNum);
+#else
+			m_featuresPtr = std::make_shared<std::vector<PZTIMAGE::RegionFeature>>(m_regionNum); 
+#endif
 		}
 
 		// Whether updata the container of feature
 		if(m_featuresPtr->size() == 0 || m_isRegionChanged){
-			if(!_UpdataRegionFeatures())
+#ifndef HAVE_MULTITHREAD_ACCELERATION
+			if(!_UpdataRegionsFeaturesV2()) 
+#else
+			if(!_UpdataRegionsFeaturesV3()) 
+#endif
 				return RegionFeature();
 		}
 		m_isRegionChanged = false;
@@ -506,7 +512,7 @@ namespace PZTIMAGE {
 		}
 			
 		if(m_featuresPtr->size() == 0 || m_isRegionChanged){
-			if(!_UpdataRegionFeatures())
+			if(!_UpdataRegionsFeaturesV2())
 				return 0;
 		}
 		m_isRegionChanged = false;
@@ -707,7 +713,7 @@ namespace PZTIMAGE {
 		return true;
 	}
 
-	bool PZTRegions::_UpdataRegionFeatures(){
+	bool PZTRegions::_UpdataRegionFeaturesV1(){
 		m_featuresPtr->clear();
 		m_featuresPtr->reserve(m_regionNum);
 		
@@ -752,18 +758,16 @@ namespace PZTIMAGE {
 		m_featuresPtr->reserve(m_regionNum);
 
 		//....
-		std::vector<std::vector<cv::Point>> contours;
-		cv::findContours(m_regions, contours, cv::RETR_LIST, cv::CHAIN_APPROX_NONE); // 不建立层次结构
-
+		
 		cv::Mat oneRegion;
 		RegionFeature trait;
 		for(unsigned int idx = 1; idx <= m_regionNum; ++idx){
 			// 获得各个连通域
 			cv::inRange(m_regions, idx, idx, oneRegion);
-			oneRegion = oneRegion + (1 - idx);
+			cv::threshold(oneRegion, oneRegion, 0, 1, cv::THRESH_BINARY);
 
 			// 更新各个连通域特征
-			trait = _GainOneRegionFeatures(oneRegion);
+			trait = _GainOneRegionFeaturesV2(oneRegion);
 
 			m_featuresPtr->push_back(trait);
 		}
@@ -771,13 +775,13 @@ namespace PZTIMAGE {
 		return true;
 	}
 
-	RegionFeature PZTRegions::_GainOneRegionFeatures(cv::InputArray t_oneRegion){
+	RegionFeature PZTRegions::_GainOneRegionFeaturesV2(cv::InputArray t_oneRegion){
 		//cv::Mat oneRegion = t_oneRegion.getMat();
 		RegionFeature trait;
 
 		// gain outermost contours
 		std::vector<std::vector<cv::Point>> contours;
-		cv::findContours(m_regions, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+		cv::findContours(t_oneRegion, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
 
 		// gain area 
 		_GainAreaFeature(t_oneRegion, trait);
@@ -791,15 +795,25 @@ namespace PZTIMAGE {
 		// gain the center of mass(row, col)
 		_GainMassCenterFeature(contours[0], trait);
 
-		// .... 内接圆/外接圆 半径   圆度计算有问题 area
+		// gain width/height/ratio
+		_GainBoundingRectangleFeature(contours[0], trait);
 
+		// gain the 
+		// .... 内接圆/外接圆 半径   圆度计算有问题 area
+		
 		return trait;
 	}
 
 	bool PZTRegions::_GainAreaFeature(cv::InputArray t_oneRegion, RegionFeature& t_features){
 		cv::Mat m = t_oneRegion.getMat();
+
+		// Method - 1
 		cv::Scalar areaVal = cv::sum(m);
 		t_features.m_area = areaVal[0];
+
+		// Method - 2
+		//cv::Moments moms = cv::moments(t_contours);
+		//t_features.m_area = moms.m00;
 
 		return true;
 	}
@@ -812,7 +826,10 @@ namespace PZTIMAGE {
 
 	bool PZTRegions::_GainCircularityFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features){
 		cv::Moments moms = cv::moments(t_contours);
-		t_features.m_circularity = 4 * CV_PI * moms.m00 / (t_features.m_contlength * t_features.m_contlength);
+
+		// Prefered method
+		t_features.m_circularity = 4 * CV_PI * t_features.m_area / (t_features.m_contlength * t_features.m_contlength);
+		//t_features.m_circularity = 4 * CV_PI * moms.m00 / (t_features.m_contlength * t_features.m_contlength);
 
 		return true;
 	}
@@ -826,10 +843,55 @@ namespace PZTIMAGE {
 		return true;
 	}
 
+	bool PZTRegions::_GainBoundingRectangleFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features){
+		cv::Rect rect = cv::boundingRect(t_contours);
+
+		t_features.m_width = rect.width;
+		t_features.m_height = rect.height;
+		t_features.m_ratio = t_features.m_height / t_features.m_width;
+
+		return true;
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Testing Module
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	PZTImage Testor::m_comImg = Testor::InitMemberComImg();
+	PZTRegions Testor::m_comReg = Testor::InitMemberComReg();
+
+	PZTImage Testor::InitMemberComImg(){
+		return PZTImage("./connectedDomain.jpg");
+	}
+
+	PZTRegions Testor::InitMemberComReg(){
+		PZTRegions tmp;
+		m_comImg.Threshold(tmp, 155, 255);
+		return tmp;
+	}
+
+	bool Testor::TestFunc_UpdataRegionsFeaturesV2(){
+		// Display 
+		m_comReg.DisplayRegion();
+
+		m_comReg.Connection();
+		int num = m_comReg.GetRegionNum();
+
+		RegionFeature trait = m_comReg.GetRegionFeature( MAX(num - 1, 0) );
+
+		return true;
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Other
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	bool TestCore() {
 		bool res = false;
 		
-		HalconDetection();
+		//HalconDetection();
+
+		// 测试 _UpdataRegionsFeaturesV2()
+		Testor::TestFunc_UpdataRegionsFeaturesV2();
 
 		return res;
 	}
@@ -857,6 +919,9 @@ namespace PZTIMAGE {
 		PZTRegions chipRegion;
 
 		imgRGB.Threshold(chipRegion, whiteChipMinGrayValue, 255);
+		imgRGB.ReduceDomain(chipRegion);
+		imgRGB.DisplayImage(0.2);
+		
 		chipRegion.FillUp();
 		chipRegion.Opening(StructElement::STRUCTELEMENT_RECTANGLE, noiseSize, noiseSize);
 		chipRegion.ShapeTrans(ShapeTransType::SHAPETRANSTYPE_RECTANGLE1);
