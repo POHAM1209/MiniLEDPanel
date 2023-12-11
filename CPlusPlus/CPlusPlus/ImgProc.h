@@ -84,13 +84,7 @@ namespace PZTIMAGE {
 		*/
 		static bool gray_range_rect(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight);
 
-		/*brief:取region信息
-		* param0[i]:输入region
-		* param1[o]:region面积
-		* param2[o]:region中心行
-		* param3[o]:region中心列
-		*/
-		static bool area_center(PZTRegions t_regI, int& area, cv::Point2f& point);
+		
 
 		/*brief:填充
 		* param0[i]:输入region
@@ -122,14 +116,18 @@ namespace PZTIMAGE {
 		*/
 		static bool dyn_threshold(PZTImage t_imgI, PZTImage t_thresholdimgI, PZTRegions& t_regO, uint8_t t_offset, Light_Dark Light_Dark);
 
-		static bool display_image(PZTImage t_imgI, std::string WindowName,bool save);
+		static bool display_image(PZTImage t_imgI, std::string WindowName,bool save,bool diaplay);
+
+		static bool display_image(PZTImage t_imgI);
 
 		static bool display_region(PZTRegions t_regI, float multiple);
 
 		static bool opening_rectangle1(PZTRegions t_regI, PZTRegions& t_regO, uint8_t t_Width, uint8_t t_Height);
 		static bool opening_circle(PZTRegions t_regI, PZTRegions& t_regO, uint8_t radius);
 		static bool dilation_rectangle1(PZTRegions t_regI, PZTRegions& t_regO, uint8_t t_Width, uint8_t t_Height);
-
+		
+		static bool get_image_size(PZTImage t_imgI, unsigned int& width, unsigned int& height);
+		static bool decompose3(PZTImage t_imgI, PZTImage& t_imgR, PZTImage& t_imgG, PZTImage& t_imgB);
 		static bool move_region(PZTRegions t_regI, PZTRegions& t_regO, int rows, int cols);
 
 		static bool union2(PZTRegions t_regI1, PZTRegions t_regI2 ,PZTRegions& t_regO);
@@ -139,12 +137,20 @@ namespace PZTIMAGE {
 		static bool difference(PZTRegions t_regI1, PZTRegions t_regI2, PZTRegions& t_regO);
 
 		static bool region_features(PZTRegions t_regI, Features t_fea, int& Value);
-		/*---------------------------------------新增----------------------------------------*/
+		/*---------------------------------------未实现----------------------------------------*/
 		/*brief:
 		*
 		*/
 		
-		
+		/*brief:取region信息
+		* param0[i]:输入region
+		* param1[o]:region面积
+		* param2[o]:region中心行
+		* param3[o]:region中心列
+		*/
+		static bool area_center(PZTRegions t_regI, int& area, cv::Point2f& point);
+
+		static bool closing_circle(PZTRegions t_regI, PZTRegions& t_regO, uint8_t radius);
 		//region取反
 		static bool complement(PZTRegions t_regI, PZTRegions& t_regO);
 		//region叠加,是否需要image与region叠加,目前不需要
