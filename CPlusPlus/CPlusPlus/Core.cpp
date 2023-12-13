@@ -121,7 +121,7 @@ namespace PZTIMAGE {
 	
 	}
 
-	bool PZTImage::Empty() const{
+	inline bool PZTImage::Empty() const{
 		return m_image.empty();
 	}
 
@@ -129,7 +129,7 @@ namespace PZTIMAGE {
 		return PZTImage(this->m_image.clone(), this->m_mask);
 	}
 
-	int PZTImage::Channels() const{
+	inline int PZTImage::Channels() const{
 		if(m_image.empty())
 			return 0;
 		
@@ -322,7 +322,10 @@ namespace PZTIMAGE {
 		_UpdataRegionNum();
 	}
 
-	PZTRegions::PZTRegions(cv::Mat&& t_reg){
+	PZTRegions::PZTRegions(cv::Mat&& t_reg) :
+		m_featuresPtr(nullptr),
+		m_isRegionChanged(false)
+	{
 		// confirm t_rg
 		if(t_reg.type() != CV_8UC1)
 			return;
@@ -421,6 +424,20 @@ namespace PZTIMAGE {
 		return *this;
 	}
 
+	PZTRegions& PZTRegions::operator= (PZTRegions&& t_other){
+		m_regions = t_other.m_regions;
+
+		if(t_other.m_featuresPtr == nullptr)
+			m_featuresPtr = nullptr;
+		else
+			m_featuresPtr = t_other.m_featuresPtr;
+		
+		m_regionNum = t_other.m_regionNum;
+		m_isRegionChanged = t_other.m_isRegionChanged;
+
+		return *this;
+	}
+
 	PZTRegions::~PZTRegions() {
 
 	}
@@ -455,7 +472,7 @@ namespace PZTIMAGE {
 		return true;
 	}
 
-	bool PZTRegions::Empty() const{
+	inline bool PZTRegions::Empty() const{
 		return m_regions.empty();
 	}
 
@@ -539,6 +556,40 @@ namespace PZTIMAGE {
 
 		cv::Matx23f m(1, 0, t_col, 0, 1, t_row);
 		cv::warpAffine(m_regions, m_regions, m, cv::Size(m_regions.cols, m_regions.rows), cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0));
+
+		return true;
+	}
+
+	bool PZTRegions::Complement(){
+		// confirm m_regions and m_regionNum
+		if(m_regions.empty() || m_regionNum != 1)
+			return false;
+
+		// Method 1
+		cv::threshold(m_regions, m_regions, (254 - 1), 1, cv::THRESH_BINARY);
+		// Method 2
+		//cv::threshold(m_regions, m_regions, 254, 1, cv::THRESH_BINARY_INV);
+		// Method 3 异或 但cv::Mat 没有初始化全是255的构造函数
+
+		m_isRegionChanged = true;
+
+		return true;
+	}
+
+	bool PZTRegions::Intersection(const PZTRegions& t_regI, PZTRegions& t_regO) const{
+		// confirm
+		if(m_regions.empty() || t_regI.Empty())
+			return false;
+
+		if(m_regionNum != 1 || t_regI.m_regionNum != 1)
+			return false;
+
+		if(!_HaveSameSize(*this, t_regI))
+			return false;
+
+		cv::Mat res;
+		cv::bitwise_and(m_regions, t_regI.m_regions, res);
+		t_regO = PZTRegions(std::move(res)); 
 
 		return true;
 	}
@@ -688,7 +739,25 @@ namespace PZTIMAGE {
 		return true;
 	}
 
-	unsigned int PZTRegions::GetRegionNum() const{
+	bool PZTRegions::Closing(StructElement t_elm, unsigned int t_kernelWidth, unsigned int t_kernelHeight){
+		if(m_regionNum == 0)
+			return true;
+
+		// confirm m_regions and m_regionNum
+		if(m_regions.empty() || m_regionNum != 1)
+			return false;
+
+		unsigned int kernelWidth= t_kernelWidth | 0x00000001;
+		unsigned int kernelHeight= t_kernelHeight | 0x00000001;
+		cv::Mat kernel = cv::getStructuringElement(static_cast<cv::MorphShapes>(t_elm), cv::Size(kernelWidth, kernelHeight));
+		cv::morphologyEx(m_regions, m_regions, cv::MORPH_CLOSE, kernel);
+
+		m_isRegionChanged = true;
+
+		return true;
+	}
+
+	inline unsigned int PZTRegions::GetRegionNum() const{
 		return m_regionNum;
 	}
 
@@ -850,6 +919,16 @@ namespace PZTIMAGE {
 		t_features.m_height = rect.height;
 		t_features.m_ratio = t_features.m_height / t_features.m_width;
 
+		return true;
+	}
+
+	bool PZTRegions::_HaveSameSize(const PZTRegions& t_reg1, const PZTRegions& t_reg2){
+		cv::Size2i Size1, Size2;
+		t_reg1.GetRegionSize(Size1);
+		t_reg2.GetRegionSize(Size2);
+
+		if(Size1.height != Size2.height || Size1.width != Size2.width)
+			return false;
 		return true;
 	}
 
