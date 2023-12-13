@@ -18,6 +18,14 @@
 
 //#define HAVE_MULTITHREAD_ACCELERATION
 
+/*
+* Test cases:
+*		1. reduce_domain() 可视化测试。目前：
+*		2. select_shape() 选取对象有误（提取特征值有误）。目前：area看起来可以
+* 		3. connection() 调用后只能存256个区域。
+*		4. 补充算子 closing_circle(√)/complement(√)/concat_region()/intersection(√)/
+*/
+
 namespace PZTIMAGE {
 
 	#define APPROXIMATION_ACCURACY		3
@@ -212,6 +220,7 @@ namespace PZTIMAGE {
 		PZTRegions(const PZTRegions& t_other);
 		PZTRegions(PZTRegions&& t_other);
 		PZTRegions& operator= (const PZTRegions& t_other);
+		PZTRegions& operator= (PZTRegions&& t_other);
 		~PZTRegions();
 
 		/*
@@ -225,7 +234,6 @@ namespace PZTIMAGE {
 		* param1[i]: The index set of region from the input of PZTRegion object.
 		*/
 		PZTRegions(const PZTRegions& t_reg, const std::vector<uint32_t>& t_indexs);
-
 
 		PZTRegions operator + (const PZTRegions& t_other) const;
 
@@ -273,7 +281,19 @@ namespace PZTIMAGE {
 		bool MoveRegion(int t_row, int t_col);
 
 		/*
-		* brief    : Compute connected components of a region.
+		* brief    : Return the complement of a region.
+		*/
+		bool Complement();
+
+		/*
+		* brief    : Calculate the intersection of two regions. *** this->m_regionNum must be 1 ***
+		* param0[i]: The other regions which will be intersected. *** t_regI::m_regionNum must be 1 ***
+		* param1[o]: Result of the intersection.
+		*/
+		bool Intersection(const PZTRegions& t_regI, PZTRegions& t_regO) const;
+
+		/*
+		* brief    : Compute connected components of a region. *** m_regionNum must be 1 ***
 		*/
 		bool Connection();
 
@@ -283,7 +303,7 @@ namespace PZTIMAGE {
 		bool Disconnection();
 
 		/*
-		* brief    : Fill up holes in one region. *** m_regionNum must be 1 ***
+		* brief    : Fill up holes in one region. *** m_regionNum must be 1 有待商榷***  
 		*/
 		bool FillUp();
 
@@ -301,6 +321,7 @@ namespace PZTIMAGE {
 		bool Erosion(StructElement t_elm, unsigned int t_kernelWidth = 3, unsigned int t_kernelHeight = 3);
 		bool Dilation(StructElement t_elm, unsigned int t_kernelWidth = 3, unsigned int t_kernelHeight = 3);
 		bool Opening(StructElement t_elm, unsigned int t_kernelWidth = 3, unsigned int t_kernelHeight = 3);
+		bool Closing(StructElement t_elm, unsigned int t_kernelWidth = 3, unsigned int t_kernelHeight = 3);
 
 		void DisplayRegion(float t_factor = 1, bool t_isWrite = false, const std::string& t_name = "m_regions.bmp");
 
@@ -342,6 +363,7 @@ namespace PZTIMAGE {
 			_GainAreaFeature(oneRegion, (*m_featuresPtr)[t_idx]);
 		}
 */
+		static bool _HaveSameSize(const PZTRegions& t_reg1, const PZTRegions& t_reg2);
 
 	private:
 		/* ! The data container. There are followed details.
