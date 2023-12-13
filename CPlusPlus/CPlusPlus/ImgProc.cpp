@@ -603,7 +603,7 @@ namespace PZTIMAGE {
 		OperatorSet::threshold(Emphasize, Threshold, 200, 255);
 		//先做形态学再打散可能少一些缺陷，可能不会出现超出情况
 		OperatorSet::connection(Threshold, Connection);
-		OperatorSet::select_shape(Connection, SelectRegion, FEATURES_AREA, 0, 100);
+		OperatorSet::select_shape(Connection, SelectRegion, FEATURES_AREA, 100, 1000);
 		OperatorSet::union1(Connection, Union);
 		OperatorSet::reduce_domain(B, Union, Reduce);
 
