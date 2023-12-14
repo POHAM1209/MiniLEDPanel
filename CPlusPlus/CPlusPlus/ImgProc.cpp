@@ -43,7 +43,7 @@ namespace PZTIMAGE {
 		cv::threshold(i_image, o_image2, t_maxGray, 1, cv::THRESH_BINARY_INV);			//阈值分割，分割后连通域只有一种,像素值一致为1
 		
 		bitwise_and(o_image1, o_image2, o_image);
-		PZTRegions o_region(o_image);												//利用图像构造region，得到阈值分割结果图像
+		PZTRegions o_region(std::move(o_image));												//利用图像构造region，得到阈值分割结果图像
 		t_reg = o_region;															//输出
 
 		
@@ -71,6 +71,7 @@ namespace PZTIMAGE {
 		if (t_imgI.m_image.type() == CV_8UC3)
 			return false;
 
+		complement(t_reg, t_reg);
 		t_imgI.ReduceDomain(t_reg);
 		t_imgO = t_imgI;
 		return res;
@@ -82,7 +83,8 @@ namespace PZTIMAGE {
 		std::vector<uint32_t> indexs;
 		int num = t_regI.GetRegionNum();
 
-		for (int i = 1; i < num; i++)
+		//疑问：应该从...到...
+		for (int i = 0; i < num; i++)
 		{
 			RegionFeature regf = t_regI.GetRegionFeature(i);
 			switch (t_fea)
@@ -121,7 +123,7 @@ namespace PZTIMAGE {
 			return false;
 		}
 		//t_regI.DisplayRegion();
-		PZTRegions result(t_regI, indexs);
+		PZTRegions result(std::move(t_regI), indexs);
 		t_regO = result;
 
 		return res;
@@ -352,7 +354,7 @@ namespace PZTIMAGE {
 				break;
 			}
 		}
-		PZTRegions res_region(result);
+		PZTRegions res_region(std::move(result));
 		t_regO = res_region;
 
 		return res;
@@ -366,7 +368,6 @@ namespace PZTIMAGE {
 		
 		return res;
 	}
-
 	bool OperatorSet::opening_circle(PZTRegions t_regI, PZTRegions& t_regO, uint8_t radius)
 	{
 		bool res = true;
@@ -383,11 +384,28 @@ namespace PZTIMAGE {
 
 		return res;
 	}
+	bool OperatorSet::closing_circle(PZTRegions t_regI, PZTRegions& t_regO, uint8_t radius)
+	{
+		bool res = true;
+		t_regI.Closing(STRUCTELEMENT_CIRCLE, radius, radius);
+		t_regO = t_regI;
+
+		return res;
+	}
 
 	bool OperatorSet::intersection(PZTRegions t_regI1, PZTRegions t_regI2, PZTRegions& t_regO)
 	{
 		bool res = true;
+		t_regI1.Intersection(t_regI2, t_regO);
 
+		return res;
+	}
+
+	bool OperatorSet::complement(PZTRegions t_regI, PZTRegions& t_regO)
+	{
+		bool res = true;
+		t_regI.Complement();
+		t_regO = t_regI;
 
 		return res;
 	}
@@ -431,7 +449,7 @@ namespace PZTIMAGE {
 		bool res = true;
 
 		int num = t_regI.GetRegionNum();
-		for (int i = 1; i < num; i++)
+		for (int i = 0; i < num; i++)
 		{
 			RegionFeature regf = t_regI.GetRegionFeature(i);
 			switch (t_fea)
@@ -463,7 +481,7 @@ namespace PZTIMAGE {
 	bool OperatorSet::difference(PZTRegions t_regI1, PZTRegions t_regI2, PZTRegions& t_regO)
 	{
 		bool res = true;
-
+		
 
 		return res;
 	}
@@ -592,7 +610,7 @@ namespace PZTIMAGE {
 
 		//图像部分
 		PZTImage Image,Gray,R,G,B,Emphasize,Reduce,GrayReduce;
-		PZTRegions Region,Threshold,Connection,SelectRegion,Union,Test;
+		PZTRegions Region,Threshold,Connection,SelectRegion,Union,Test,Closing,Trans,Opening;
 
 		//算子部分
 		OperatorSet::read_image(Image, filename);
@@ -601,17 +619,21 @@ namespace PZTIMAGE {
 		OperatorSet::decompose3(Image, R, G, B);
 		OperatorSet::emphasize(B, Emphasize, 36, 36, 3);
 		OperatorSet::threshold(Emphasize, Threshold, 200, 255);
+		OperatorSet::opening_rectangle1(Threshold, Opening, 20, 20);		//这一步可直接变为矩形
 		//先做形态学再打散可能少一些缺陷，可能不会出现超出情况
-		OperatorSet::connection(Threshold, Connection);
-		OperatorSet::select_shape(Connection, SelectRegion, FEATURES_AREA, 0, 100);
-		OperatorSet::union1(Connection, Union);
+		OperatorSet::connection(Opening, Connection);
+		OperatorSet::select_shape(Connection, SelectRegion, FEATURES_AREA, 0, 1000);
+		OperatorSet::shape_trans(SelectRegion, Trans, SHAPETRANSTYPE_RECTANGLE1);
+		OperatorSet::union1(Trans, Union);
 		OperatorSet::reduce_domain(B, Union, Reduce);
 
 		//显示部分
 		//OperatorSet::display_image(Reduce);
-		//OperatorSet::display_image(Reduce, "image", 0, 0);
-		OperatorSet::display_region(SelectRegion, 1);
-		OperatorSet::display_region(Connection, 1);
+		B.DisplayImage();
+		Union.DisplayRegion();
+		Reduce.DisplayImage();
+		//OperatorSet::display_region(Trans, 1);
+		//OperatorSet::display_region(Connection, 1);
 
 		return res;
 	}

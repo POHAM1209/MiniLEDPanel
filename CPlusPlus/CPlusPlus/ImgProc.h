@@ -137,6 +137,12 @@ namespace PZTIMAGE {
 		static bool difference(PZTRegions t_regI1, PZTRegions t_regI2, PZTRegions& t_regO);
 
 		static bool region_features(PZTRegions t_regI, Features t_fea, int& Value);
+		//region之间的交集
+		static bool intersection(PZTRegions t_regI1, PZTRegions t_regI2, PZTRegions& t_regO);
+		static bool closing_circle(PZTRegions t_regI, PZTRegions& t_regO, uint8_t radius);
+		//region取反
+		static bool complement(PZTRegions t_regI, PZTRegions& t_regO);
+
 		/*---------------------------------------未实现----------------------------------------*/
 		/*brief:
 		*
@@ -149,14 +155,9 @@ namespace PZTIMAGE {
 		* param3[o]:region中心列
 		*/
 		static bool area_center(PZTRegions t_regI, int& area, cv::Point2f& point);
-
-		static bool closing_circle(PZTRegions t_regI, PZTRegions& t_regO, uint8_t radius);
-		//region取反
-		static bool complement(PZTRegions t_regI, PZTRegions& t_regO);
 		//region叠加,是否需要image与region叠加,目前不需要
 		static bool concat_region(PZTRegions t_regI, PZTRegions& t_regO);
-		//region之间的交集
-		static bool intersection(PZTRegions t_regI1, PZTRegions t_regI2, PZTRegions& t_regO);
+
 	};
 
 	bool TestImgProc();
