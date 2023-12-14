@@ -557,6 +557,10 @@ namespace PZTIMAGE {
 		cv::Matx23f m(1, 0, t_col, 0, 1, t_row);
 		cv::warpAffine(m_regions, m_regions, m, cv::Size(m_regions.cols, m_regions.rows), cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0));
 
+		{
+			int a;
+		}
+
 		return true;
 	}
 
@@ -566,10 +570,8 @@ namespace PZTIMAGE {
 			return false;
 
 		cv::bitwise_not(m_regions, m_regions);
-		// Method 1
-		cv::threshold(m_regions, m_regions, (254 - 1), 1, cv::THRESH_BINARY);
-		// Method 2
-		//cv::threshold(m_regions, m_regions, 254, 1, cv::THRESH_BINARY_INV);
+
+		cv::threshold(m_regions, m_regions, 254, 1, cv::THRESH_BINARY);
 		// Method 3 异或 但cv::Mat 没有初始化全是255的构造函数
 
 		m_isRegionChanged = true;
