@@ -478,7 +478,7 @@ namespace PZTIMAGE {
 
 	RegionFeature PZTRegions::GetRegionFeature(unsigned int t_index){
 		// confirm t_index
-		if(t_index > m_regionNum)
+		if(t_index >= m_regionNum)
 			return RegionFeature();
 
 		// That m_featuresPtr is nullptr represents no objects in the container of feature, and 
@@ -520,7 +520,7 @@ namespace PZTIMAGE {
 
 	float PZTRegions::GetRegionFeature(unsigned int t_index, FeatureType t_type){
 		// confirm t_index
-		if(t_index > m_regionNum)
+		if(t_index >= m_regionNum)
 			return 0;
 		
 		if(m_featuresPtr == nullptr || m_isRegionChanged){
@@ -565,6 +565,7 @@ namespace PZTIMAGE {
 		if(m_regions.empty() || m_regionNum != 1)
 			return false;
 
+		cv::bitwise_not(m_regions, m_regions);
 		// Method 1
 		cv::threshold(m_regions, m_regions, (254 - 1), 1, cv::THRESH_BINARY);
 		// Method 2
