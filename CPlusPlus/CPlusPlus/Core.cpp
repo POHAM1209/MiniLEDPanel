@@ -5,6 +5,8 @@ namespace PZTIMAGE {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// PZTImage
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	ThreadPool PZTRegions::m_works(DEFAULT_THREAD_NUM);
+
 	PZTImage::PZTImage(){
 		
 	}
@@ -557,10 +559,6 @@ namespace PZTIMAGE {
 		cv::Matx23f m(1, 0, t_col, 0, 1, t_row);
 		cv::warpAffine(m_regions, m_regions, m, cv::Size(m_regions.cols, m_regions.rows), cv::INTER_NEAREST, cv::BORDER_CONSTANT, cv::Scalar(0));
 
-		{
-			int a;
-		}
-
 		return true;
 	}
 
@@ -570,9 +568,7 @@ namespace PZTIMAGE {
 			return false;
 
 		cv::bitwise_not(m_regions, m_regions);
-
 		cv::threshold(m_regions, m_regions, 254, 1, cv::THRESH_BINARY);
-		// Method 3 异或 但cv::Mat 没有初始化全是255的构造函数
 
 		m_isRegionChanged = true;
 
@@ -830,7 +826,6 @@ namespace PZTIMAGE {
 		m_featuresPtr->reserve(m_regionNum);
 
 		//....
-		
 		cv::Mat oneRegion;
 		RegionFeature trait;
 		for(unsigned int idx = 1; idx <= m_regionNum; ++idx){
@@ -847,6 +842,24 @@ namespace PZTIMAGE {
 		return true;
 	}
 
+	bool PZTRegions::_UpdataRegionsFeaturesV3(){
+		m_featuresPtr->clear();
+		m_featuresPtr->reserve(m_regionNum);
+
+		// ...
+		std::vector<std::future<RegionFeature>> results(m_regionNum);
+
+		// 
+		for(int idx = 0; idx < m_regionNum; ++idx)
+			results[idx] = m_works.enqueue(&PZTRegions::_GainOneRegionFeaturesV3, this, idx);
+		
+		//
+		for(int idx = 0; idx < m_regionNum; ++idx)
+			m_featuresPtr->push_back(results[idx].get());
+
+		return true;
+	}
+
 	RegionFeature PZTRegions::_GainOneRegionFeaturesV2(cv::InputArray t_oneRegion){
 		//cv::Mat oneRegion = t_oneRegion.getMat();
 		RegionFeature trait;
@@ -855,25 +868,53 @@ namespace PZTIMAGE {
 		std::vector<std::vector<cv::Point>> contours;
 		cv::findContours(t_oneRegion, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
 
+		__GainOneRegionFeatures(t_oneRegion, contours[0], trait);
+		
+		return trait;
+	}
+
+	RegionFeature PZTRegions::_GainOneRegionFeaturesV3(uint32_t t_idx){
+		// gain region
+		cv::Mat oneRegion;
+		cv::inRange(this->m_regions, t_idx, t_idx, oneRegion);
+		cv::threshold(oneRegion, oneRegion, 0, 1, cv::THRESH_BINARY);
+
+		// gain outermost contours
+		std::vector<std::vector<cv::Point>> contours;
+		cv::findContours(oneRegion, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+
+		RegionFeature trait;
+		__GainOneRegionFeatures(oneRegion, contours[0], trait);
+
+		return trait;
+	}
+
+	bool PZTRegions::__GainOneRegionFeatures(cv::InputArray t_oneRegion, const std::vector<cv::Point>& t_contour, RegionFeature& t_feature){
 		// gain area 
-		_GainAreaFeature(t_oneRegion, trait);
+		_GainAreaFeature(t_oneRegion, t_feature);
 
 		// gain contours length
-		_GainContlengthFeature(contours[0], trait);
+		_GainContlengthFeature(t_contour, t_feature);
 
 		// gain circularity
-		_GainCircularityFeature(contours[0], trait);
+		_GainCircularityFeature(t_feature);
 
 		// gain the center of mass(row, col)
-		_GainMassCenterFeature(contours[0], trait);
+		_GainMassCenterFeature(t_contour, t_feature);
 
-		// gain width/height/ratio
-		_GainBoundingRectangleFeature(contours[0], trait);
+		// gain width1/height1/ratio1
+		_GainBoundingRectangleFeature(t_contour, t_feature);
+
+		// gain width1/height1/ratio1
+		_GainRotatedRectangleFeature(t_contour, t_feature);
+
+		// gain rectangularity
+		_GainRectangularityFeature(t_feature);
 
 		// gain the 
 		// .... 内接圆/外接圆 半径   圆度计算有问题 area
 		
-		return trait;
+		return true;
 	}
 
 	bool PZTRegions::_GainAreaFeature(cv::InputArray t_oneRegion, RegionFeature& t_features){
@@ -896,12 +937,19 @@ namespace PZTIMAGE {
 		return true;
 	}
 
-	bool PZTRegions::_GainCircularityFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features){
-		cv::Moments moms = cv::moments(t_contours);
-
+	bool PZTRegions::_GainCircularityFeature(RegionFeature& t_feature){
 		// Prefered method
-		t_features.m_circularity = 4 * CV_PI * t_features.m_area / (t_features.m_contlength * t_features.m_contlength);
-		//t_features.m_circularity = 4 * CV_PI * moms.m00 / (t_features.m_contlength * t_features.m_contlength);
+		t_feature.m_circularity = 4 * CV_PI * t_feature.m_area / (t_feature.m_contlength * t_feature.m_contlength);
+
+		// Other method
+		//cv::Moments moms = cv::moments(t_contours);
+		//t_feature.m_circularity = 4 * CV_PI * moms.m00 / (t_feature.m_contlength * t_feature.m_contlength);
+
+		return true;
+	}
+
+	bool PZTRegions::_GainRectangularityFeature(RegionFeature& t_feature){
+		t_feature.m_rectangularity = t_feature.m_area / (t_feature.m_width2 * t_feature.m_height2);
 
 		return true;
 	}
@@ -915,12 +963,22 @@ namespace PZTIMAGE {
 		return true;
 	}
 
-	bool PZTRegions::_GainBoundingRectangleFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features){
-		cv::Rect rect = cv::boundingRect(t_contours);
+	bool PZTRegions::_GainBoundingRectangleFeature(const std::vector<cv::Point>& t_contour, RegionFeature& t_feature){
+		cv::Rect rect = cv::boundingRect(t_contour);
 
-		t_features.m_width = rect.width;
-		t_features.m_height = rect.height;
-		t_features.m_ratio = t_features.m_height / t_features.m_width;
+		t_feature.m_width1 = rect.width;
+		t_feature.m_height1 = rect.height;
+		t_feature.m_ratio1 = t_feature.m_height1 / t_feature.m_width1;
+
+		return true;
+	}
+
+	bool PZTRegions::_GainRotatedRectangleFeature(const std::vector<cv::Point>& t_contour, RegionFeature& t_feature){
+		cv::RotatedRect rect = cv::minAreaRect(t_contour);
+
+		t_feature.m_width2 = rect.size.width;
+		t_feature.m_height2 = rect.size.height;
+		t_feature.m_ratio2 = t_feature.m_height2 / t_feature.m_width2;
 
 		return true;
 	}
