@@ -996,20 +996,20 @@ namespace PZTIMAGE {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Testing Module
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	PZTImage Testor::m_comImg = Testor::InitMemberComImg();
-	PZTRegions Testor::m_comReg = Testor::InitMemberComReg();
+	PZTImage CoreTestor::m_comImg = CoreTestor::InitMemberComImg();
+	PZTRegions CoreTestor::m_comReg = CoreTestor::InitMemberComReg();
 
-	PZTImage Testor::InitMemberComImg(){
+	PZTImage CoreTestor::InitMemberComImg(){
 		return PZTImage("./connectedDomain.jpg");
 	}
 
-	PZTRegions Testor::InitMemberComReg(){
+	PZTRegions CoreTestor::InitMemberComReg(){
 		PZTRegions tmp;
 		m_comImg.Threshold(tmp, 155, 255);
 		return tmp;
 	}
 
-	bool Testor::TestFunc_UpdataRegionsFeaturesV2(){
+	bool CoreTestor::TestFunc_UpdataRegionsFeaturesV2(){
 		// Display 
 		m_comReg.DisplayRegion();
 
@@ -1031,7 +1031,7 @@ namespace PZTIMAGE {
 		//HalconDetection();
 
 		// 测试 _UpdataRegionsFeaturesV2()
-		Testor::TestFunc_UpdataRegionsFeaturesV2();
+		CoreTestor::TestFunc_UpdataRegionsFeaturesV2();
 
 		return res;
 	}
