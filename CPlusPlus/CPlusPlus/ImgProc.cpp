@@ -73,6 +73,7 @@ namespace PZTIMAGE {
 
 		complement(t_reg, t_reg);
 		t_imgI.ReduceDomain(t_reg);
+		t_imgI.m_image = t_imgI.m_image.mul(t_imgI.m_mask);
 		t_imgO = t_imgI;
 		return res;
 	}
@@ -191,13 +192,13 @@ namespace PZTIMAGE {
 		int hh = (t_MaskHeight - 1) / 2;
 		int hw = (t_MaskWidth - 1) / 2;
 		cv::Mat Newsrc;
-		cv::copyMakeBorder(t_imgI.m_mask, Newsrc, hh, hh, hw, hw, cv::BORDER_REFLECT_101);//以边缘为轴，对称
-		t_imgO.m_mask= cv::Mat::zeros(t_imgI.m_mask.rows, t_imgI.m_mask.cols, t_imgI.m_mask.type());
+		cv::copyMakeBorder(t_imgI.m_image, Newsrc, hh, hh, hw, hw, cv::BORDER_REFLECT_101);//以边缘为轴，对称
+		t_imgO.m_image = cv::Mat::zeros(t_imgI.m_image.rows, t_imgI.m_image.cols, t_imgI.m_image.type());
 
 		//遍历图像
-		for (int i = 0; i < t_imgI.m_mask.rows; i++)
+		for (int i = 0; i < t_imgI.m_image.rows; i++)
 		{
-			for (int j = 0; j < t_imgI.m_mask.cols; j++)
+			for (int j = 0; j < t_imgI.m_image.cols; j++)
 			{
 				//uchar srcValue = src.at<uchar>(i, j);
 				int minValue = 255;
@@ -213,7 +214,7 @@ namespace PZTIMAGE {
 					}
 				}
 				uchar diffValue = (uchar)(maxValue - minValue);
-				t_imgO.m_mask.at<uchar>(i, j) = diffValue;
+				t_imgO.m_image.at<uchar>(i, j) = diffValue;
 			}
 		}
 
@@ -437,6 +438,9 @@ namespace PZTIMAGE {
 
 	bool OperatorSet::shape_trans(PZTRegions t_regI, PZTRegions& t_regO, ShapeTransType t_type)
 	{
+		if (t_regI.Empty())
+			return false;
+
 		bool res = true;
 		t_regI.ShapeTrans(t_type);
 		t_regO = t_regI;
@@ -529,14 +533,6 @@ namespace PZTIMAGE {
 		return res;
 	}
 
-	bool OperatorSet::display_image(PZTImage t_imgI) {
-		bool res = true;
-
-		cv::imshow("test", 60* t_imgI.m_mask);
-		cv::waitKey(0);
-		return res;
-	}
-
 	bool OperatorSet::display_region(PZTRegions t_regI, float mutiple)
 	{
 		bool res = true;
@@ -605,33 +601,39 @@ namespace PZTIMAGE {
 
 		/***************复现简单图像(缺陷数量少的图像)******************/
 		//变量部分
-		std::string filename = "E:/1dong/5-18-ExposureTime3000-normal/test.png";
+
+		std::string filename = "E:/1dong/5-18-ExposureTime3000-normal/test1.jpg";
 		unsigned int width, height;
 
 		//图像部分
-		PZTImage Image,Gray,R,G,B,Emphasize,Reduce,GrayReduce;
-		PZTRegions Region,Threshold,Connection,SelectRegion,Union,Test,Closing,Trans,Opening;
+		PZTImage Image, Gray, R, G, B, Emphasize, Reduce, GrayReduce, Mean;
+		PZTRegions Region, Threshold, Connection, SelectRegion1, Union, Test, Closing, Trans, Opening, Dyn, Dilation, SelectRegion2;
 
 		//算子部分
 		OperatorSet::read_image(Image, filename);
 		//OperatorSet::gray_image(Image, Gray);
+
 		OperatorSet::get_image_size(Image, width, height);
-		OperatorSet::decompose3(Image, R, G, B);
+		OperatorSet::decompose3(Image, R, G, B);		//当图片已为灰度图时
 		OperatorSet::emphasize(B, Emphasize, 36, 36, 3);
-		OperatorSet::threshold(Emphasize, Threshold, 200, 255);
+		OperatorSet::threshold(Emphasize, Threshold, 170, 255);
 		OperatorSet::opening_rectangle1(Threshold, Opening, 20, 20);		//这一步可直接变为矩形
 		//先做形态学再打散可能少一些缺陷，可能不会出现超出情况
 		OperatorSet::connection(Opening, Connection);
-		OperatorSet::select_shape(Connection, SelectRegion, FEATURES_AREA, 0, 1000);
-		OperatorSet::shape_trans(SelectRegion, Trans, SHAPETRANSTYPE_RECTANGLE1);
+		OperatorSet::select_shape(Connection, SelectRegion1, FEATURES_AREA, 0, 1000);
+		OperatorSet::shape_trans(SelectRegion1, Trans, SHAPETRANSTYPE_RECTANGLE1);
 		OperatorSet::union1(Trans, Union);
-		OperatorSet::reduce_domain(B, Union, Reduce);
+		OperatorSet::dilation_rectangle1(Union, Dilation, 50, 50);
+		OperatorSet::reduce_domain(B, Dilation, Reduce);
+		OperatorSet::mean_image(Reduce, Mean, 7, 7);
+		OperatorSet::dyn_threshold(Reduce, Mean, Dyn, 7, Dark);		//去除芯片后会留下方形边缘
+		Dyn.DisplayRegion();
 
 		//显示部分
 		//OperatorSet::display_image(Reduce);
-		B.DisplayImage();
-		Union.DisplayRegion();
-		Reduce.DisplayImage();
+		//B.DisplayImage();
+		//Union.DisplayRegion();
+		//Reduce.DisplayImage();
 		//OperatorSet::display_region(Trans, 1);
 		//OperatorSet::display_region(Connection, 1);
 
