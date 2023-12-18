@@ -1,6 +1,7 @@
 #ifndef _CORE_H_
 #define _CORE_H_
 
+#include "Utils.h"
 #include "Defines.h"
 
 #include <opencv2/core.hpp>
@@ -16,7 +17,8 @@
 #include <algorithm>
 #include <iostream>
 
-//#define HAVE_MULTITHREAD_ACCELERATION
+#define DEFAULT_THREAD_NUM						8
+#define HAVE_MULTITHREAD_ACCELERATION
 
 /*
 * Test cases:
@@ -24,6 +26,9 @@
 *		2. select_shape() 选取对象有误（提取特征值有误）。目前：area看起来可以
 * 		3. connection() 调用后只能存256个区域。
 *		4. 补充算子 closing_circle(√)/complement(√)/concat_region()/intersection(√)/
+*		2023-12-15
+*		5. PZTImage::Display()需要添加RGB展示
+* 		6，添加矩阵度
 */
 
 namespace PZTIMAGE {
@@ -45,6 +50,9 @@ namespace PZTIMAGE {
 		float					m_contlength;
 		// ! The circularity of extreme outer contour
 		float 					m_circularity;
+		// ! The rectangularity of extreme outer contour
+		float 					m_rectangularity;
+
 		// ! Row index of the center
 		unsigned int 			m_row;
 		// ! Column index of the center
@@ -54,11 +62,17 @@ namespace PZTIMAGE {
 		float					m_innerRadius;
 
 		// ! Width of the region (parallel to the coordinate axes)
-		float					m_width;
+		float					m_width1;
 		// ! Height of the region (parallel to the coordinate axes)
-		float					m_height;
-		// ! Ratio of the height and the width of the region (parallel to the coordinate axes) = height / width
-		float 					m_ratio;
+		float					m_height1;
+		// ! Ratio of the height and the width of the region (parallel to the coordinate axes) = m_height1 / m_width1
+		float 					m_ratio1;
+		// ! Width of the rotated rectangle obtained through region
+		float					m_width2;
+		// ! Height of the rotated rectangle obtained through region
+		float					m_height2;
+		// ! Ratio of the height and the width of the region (rotated rectangle) = m_height2 / m_width2
+		float 					m_ratio2;
 	}RegionFeature;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -338,11 +352,18 @@ namespace PZTIMAGE {
 
 		bool _UpdataRegionsFeaturesV2();
 		RegionFeature _GainOneRegionFeaturesV2(cv::InputArray t_oneRegion);
-		bool _GainAreaFeature(cv::InputArray t_oneRegion, RegionFeature& t_features);
-		bool _GainContlengthFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features);
-		bool _GainCircularityFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features);
-		bool _GainMassCenterFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features);
-		bool _GainBoundingRectangleFeature(const std::vector<cv::Point>& t_contours, RegionFeature& t_features);
+
+		bool _UpdataRegionsFeaturesV3();
+		RegionFeature _GainOneRegionFeaturesV3(uint32_t t_idx);
+
+		bool __GainOneRegionFeatures(cv::InputArray t_oneRegion, const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
+		bool _GainAreaFeature(cv::InputArray t_oneRegion, RegionFeature& t_feature);
+		bool _GainContlengthFeature(const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
+		bool _GainCircularityFeature(RegionFeature& t_feature);
+		bool _GainRectangularityFeature(RegionFeature& t_feature);
+		bool _GainMassCenterFeature(const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
+		bool _GainBoundingRectangleFeature(const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
+		bool _GainRotatedRectangleFeature(const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
 
 /*
 		bool _UpdataRegionsFeaturesV3(){
@@ -383,6 +404,9 @@ namespace PZTIMAGE {
 
 		// ! It represents whether m_regions has changed by some operators
 		bool											m_isRegionChanged;
+
+		//
+		static ThreadPool								m_works;
 	};
 
 	bool TestCore();
