@@ -1,8 +1,10 @@
 ﻿#ifndef _IMGPROC_H_
 #define _IMGPROC_H_
 
+#include "Test.h"
 #include "Core.h"
 #include "Defines.h"
+#include<Windows.h>
 
 #include <string>
 
