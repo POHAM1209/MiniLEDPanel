@@ -28,7 +28,7 @@
 *		4. 补充算子 closing_circle(√)/complement(√)/concat_region()/intersection(√)/
 *		2023-12-15
 *		5. PZTImage::Display()需要添加RGB展示
-* 		6，添加矩阵度
+* 		6，添加矩阵度(√)
 */
 
 namespace PZTIMAGE {
@@ -419,17 +419,17 @@ namespace PZTIMAGE {
 	//
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class Testor{
+	class CoreTestor{
 	public:
 		static PZTRegions InitMemberComReg();
 		static PZTImage InitMemberComImg();
 		static bool TestFunc_UpdataRegionsFeaturesV2();
 
 	private:
-		static PZTImage									m_comImg;
+		static PZTIMAGE::PZTImage						m_comImg;
 
 		// ! PZTRegions object. Its Member m_regionNum is 1.
-		static PZTRegions								m_comReg;
+		static PZTIMAGE::PZTRegions						m_comReg;
 	};
 }
 
