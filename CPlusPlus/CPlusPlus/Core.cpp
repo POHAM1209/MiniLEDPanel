@@ -294,7 +294,18 @@ namespace PZTIMAGE {
 		if(m_image.empty())
 			return;
 
-		cv::Mat tmp = m_image.mul(m_mask);
+		// judge channels
+		cv::Mat mark;
+		cv::Mat marks[3];
+		unsigned char channelNum = m_image.channels();
+		if(channelNum == 1)
+			marks[0] = m_mask;
+		if(channelNum == 3){
+			marks[0] = m_mask; marks[1] = m_mask; marks[2] = m_mask;
+		}
+		cv::merge(marks, channelNum, mark);
+		cv::Mat tmp = m_image.mul(mark);
+
 		cv::resize(tmp, tmp, cv::Size(m_image.cols * t_factor, m_image.rows * t_factor));
 		cv::imshow("m_image", tmp);
 		cv::waitKey(0);	
@@ -1000,18 +1011,22 @@ namespace PZTIMAGE {
 	PZTRegions CoreTestor::m_comReg = CoreTestor::InitMemberComReg();
 
 	PZTImage CoreTestor::InitMemberComImg(){
-		return PZTImage("./connectedDomain.jpg");
+		PZTImage tmp("./small_bayer.bmp");
+		tmp.ChangeColorSpace(TRANSCOLORSPACE_RGB2GRAY);
+
+		return tmp;
 	}
 
 	PZTRegions CoreTestor::InitMemberComReg(){
 		PZTRegions tmp;
-		m_comImg.Threshold(tmp, 155, 255);
+		m_comImg.Threshold(tmp, 240, 255);
 		return tmp;
 	}
 
 	bool CoreTestor::TestFunc_UpdataRegionsFeaturesV2(){
-		// Display 
-		m_comReg.DisplayRegion();
+		// Display
+		m_comImg.DisplayImage(0.2);
+		m_comReg.DisplayRegion(0.2);
 
 		m_comReg.Connection();
 		int num = m_comReg.GetRegionNum();
@@ -1025,9 +1040,14 @@ namespace PZTIMAGE {
 	// Other
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	int FuncFeature(int t_a) {
+
+		return t_a + 2;
+	}
+
 	bool TestCore() {
 		bool res = false;
-		
+
 		//HalconDetection();
 
 		// 测试 _UpdataRegionsFeaturesV2()
