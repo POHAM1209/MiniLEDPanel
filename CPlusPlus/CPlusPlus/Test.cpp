@@ -1,6 +1,17 @@
 #include"Test.h"
 namespace PZTIMAGE {
 
+	myTimer::myTimer() {
+		QueryPerformanceFrequency(&nFreq);
+		QueryPerformanceCounter(&nBeginTime);
+	}
+
+	myTimer::~myTimer() {
+		QueryPerformanceCounter(&nEndTime);
+		double time = (double)(nEndTime.QuadPart - nBeginTime.QuadPart) / (double)nFreq.QuadPart * 1000;
+		std::cout << "The used time is  " << time << "  ms\n";
+	}
+
 	bool TestTest() {
 		bool res = false;
 		
