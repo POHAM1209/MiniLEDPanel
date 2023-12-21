@@ -23,7 +23,7 @@
 
 /*
 * Test cases:
-*		1. [ ] reduce_domain() 可视化测试。目前：
+*		1. [ ] reduce_domain() 可视化测试。目前：：
 *		2. [ ] select_shape() 选取对象有误（提取特征值有误）。目前：area看起来可以
 * 		3. [ ] connection() 调用后只能存256个区域。
 *		4. [ ] 补充算子 closing_circle(√)/complement(√)/concat_region()/intersection(√)/
