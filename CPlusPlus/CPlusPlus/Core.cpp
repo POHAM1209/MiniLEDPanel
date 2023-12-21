@@ -1011,7 +1011,8 @@ namespace PZTIMAGE {
 	PZTRegions CoreTestor::m_comReg = CoreTestor::InitMemberComReg();
 
 	PZTImage CoreTestor::InitMemberComImg(){
-		PZTImage tmp("./small_bayer.bmp");
+		//PZTImage tmp("./small_bayer.bmp");
+		PZTImage tmp("./connectedDomain.jpg");
 		tmp.ChangeColorSpace(TRANSCOLORSPACE_RGB2GRAY);
 
 		return tmp;
@@ -1025,13 +1026,16 @@ namespace PZTIMAGE {
 
 	bool CoreTestor::TestFunc_UpdataRegionsFeaturesV2(){
 		// Display
-		m_comImg.DisplayImage(0.2);
-		m_comReg.DisplayRegion(0.2);
+		//m_comImg.DisplayImage(0.2);
+		//m_comReg.DisplayRegion(0.2);
 
 		m_comReg.Connection();
 		int num = m_comReg.GetRegionNum();
 
-		RegionFeature trait = m_comReg.GetRegionFeature( MAX(num - 1, 0) );
+		{
+			myTimer a;
+			RegionFeature trait = m_comReg.GetRegionFeature( MAX(num - 1, 0) );
+		}
 
 		return true;
 	}
