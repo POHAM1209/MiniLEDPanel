@@ -144,6 +144,7 @@
     <ClInclude Include="Defines.h" />
     <ClInclude Include="ImgProc.h" />
     <ClInclude Include="Test.h" />
+    <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core.cpp" />
@@ -151,6 +152,7 @@
     <ClCompile Include="ImgProc.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Test.cpp" />
+    <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
