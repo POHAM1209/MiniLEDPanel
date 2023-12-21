@@ -1,6 +1,7 @@
 #ifndef _CORE_H_
 #define _CORE_H_
 
+#include "Test.h"
 #include "Utils.h"
 #include "Defines.h"
 
@@ -346,9 +347,10 @@ namespace PZTIMAGE {
 
 		/*
 		* brief: 
-		* 		_UpdataRegionFeaturesV1() : It is only for blob.
-		*    	_UpdataRegionFeaturesV2() : It could be for various connected domains, but is time-consuming.
-		*		_UpdataRegionFeaturesV3() : Adopting multi-threaded technology to speed up.
+		* 		_UpdataRegionFeaturesV1()	: It is only for blob.
+		*    	_UpdataRegionFeaturesV2()	: It could be for various connected domains, but is time-consuming.
+		*		_UpdataRegionFeaturesV3()	: Adopting multi-threaded technology to speed up.
+		*		_UpdataRegionFeaturesV3_1() : 
 		*/
 		bool _UpdataRegionFeaturesV1(); 
 
