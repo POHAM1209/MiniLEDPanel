@@ -45,7 +45,6 @@ inline ThreadPool::ThreadPool(size_t threads)
                 for(;;)
                 {
                     std::function<void()> task;
-
                     {
                         std::unique_lock<std::mutex> lock(this->queue_mutex);
                         this->condition.wait(lock,
@@ -98,6 +97,5 @@ inline ThreadPool::~ThreadPool()
     for(std::thread &worker: workers)
         worker.join();
 }
-
 
 #endif
