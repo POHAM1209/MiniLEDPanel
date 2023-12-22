@@ -18,8 +18,27 @@
 #include <algorithm>
 #include <iostream>
 
-#define DEFAULT_THREAD_NUM						8
-#define HAVE_MULTITHREAD_ACCELERATION
+// ! The number of thread in the ThreadPool.
+#define DEFAULT_THREAD_NUM												8
+
+// ! Enable multi-thread acceleration.
+//#define HAVE_MULTITHREAD_ACCELERATION
+
+// ! The depth of m_regions, the member of PZTRegion, is CV_8U.
+//#define PZTREGION_MAT_8U
+
+// ! The depth of m_regions, the member of PZTRegion, is CV_16S.
+#ifndef PZTREGION_MAT_8U
+	#define PZTREGION_MAT_16U
+#endif
+
+// ! The type of m_regions which is the member of Class PZTRegion.
+#ifdef PZTREGION_MAT_8U
+	#define PZTREGION_M_REGIONS_TYPE									CV_8UC1
+#endif
+#ifdef PZTREGION_MAT_16U
+	#define PZTREGION_M_REGIONS_TYPE									CV_16UC1
+#endif
 
 /*
 * Test cases:
@@ -31,7 +50,9 @@
 *		1. [√] PZTImage::Display()需要添加RGB展示
 * 		2. [√] 添加矩阵度
 *	2023-12-18		
-*		1. [ ] 解决最多存储255缺陷()
+*		1. [√] 解决最多存储255缺陷()
+* 	2023-12-22
+*		1. [ ] findCountour();
 */
 
 namespace PZTIMAGE {
@@ -40,8 +61,9 @@ namespace PZTIMAGE {
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// brief:
-	// 
+	// 		
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	enum StructElement { STRUCTELEMENT_RECTANGLE = 0, STRUCTELEMENT_CROSS, STRUCTELEMENT_CIRCLE };
 
 	typedef struct RegionFeature {
@@ -78,6 +100,429 @@ namespace PZTIMAGE {
 		float 					m_ratio2;
 	}RegionFeature;
 
+	typedef struct NoOp{
+    NoOp(){}
+		inline void init(int /*labels*/){}
+		inline void initElement(const int /*nlabels*/){}
+
+		inline void operator()(int r, int c, int l){
+			CV_UNUSED(r);
+			CV_UNUSED(c);
+			CV_UNUSED(l);
+		}
+
+		void finish(){}
+
+		inline void setNextLoc(const int /*nextLoc*/){}
+		inline static void mergeStats(const cv::Mat& /*imgLabels*/, NoOp * /*sopArray*/, NoOp& /*sop*/, const int& /*nLabels*/){}
+	}NoOp;
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// brief:
+	// 		This
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	template<typename LabelT>
+	inline static LabelT flattenL(LabelT* P, LabelT length) {
+		LabelT k = 1;
+		for (LabelT i = 1; i < length; ++i) {
+			if (P[i] < i) {
+				P[i] = P[P[i]];
+			}
+			else {
+				P[i] = k; k = k + 1;
+			}
+		}
+		return k;
+	}
+
+	template<typename LabelT>
+	inline static LabelT findRoot(const LabelT* P, LabelT i) {
+		LabelT root = i;
+		while (P[root] < root) {
+			root = P[root];
+		}
+		return root;
+	}
+
+	template<typename LabelT>
+	inline static void setRoot(LabelT* P, LabelT i, LabelT root) {
+		while (P[i] < i) {
+			LabelT j = P[i];
+			P[i] = root;
+			i = j;
+		}
+		P[i] = root;
+	}
+
+	template<typename LabelT> inline static
+	LabelT set_union(LabelT* P, LabelT i, LabelT j) {
+		LabelT root = findRoot(P, i);
+		if (i != j) {
+			LabelT rootj = findRoot(P, j);
+			if (root > rootj) {
+				root = rootj;
+			}
+			setRoot(P, j, root);
+		}
+		setRoot(P, i, root);
+		return root;
+	}
+
+	template<typename LabelT, typename PixelT, typename StatsOp = NoOp >
+	struct LabelingBolelli
+	{
+		LabelT operator()(const cv::Mat& img, cv::Mat& imgLabels, int connectivity, StatsOp& sop)
+		{
+			CV_Assert(img.rows == imgLabels.rows);
+			CV_Assert(img.cols == imgLabels.cols);
+			CV_Assert(connectivity == 8);
+
+			const int h = img.rows;
+			const int w = img.cols;
+
+			const int e_rows = h & -2;
+			const bool o_rows = h % 2 == 1;
+			const int e_cols = w & -2;
+			const bool o_cols = w % 2 == 1;
+
+			// A quick and dirty upper bound for the maximum number of labels.
+			// Following formula comes from the fact that a 2x2 block in 8-connectivity case
+			// can never have more than 1 new label and 1 label for background.
+			// Worst case image example pattern:
+			// 1 0 1 0 1...
+			// 0 0 0 0 0...
+			// 1 0 1 0 1...
+			// ............
+			const size_t Plength = size_t(((h + 1) / 2) * size_t((w + 1) / 2)) + 1;
+
+			std::vector<LabelT> P_(Plength, 0);
+			LabelT *P = P_.data();
+			//P[0] = 0;
+			LabelT lunique = 1;
+
+			// First scan
+
+			// We work with 2x2 blocks
+			// +-+-+-+
+			// |P|Q|R|
+			// +-+-+-+
+			// |S|X|
+			// +-+-+
+
+			// The pixels are named as follows
+			// +---+---+---+
+			// |a b|c d|e f|
+			// |g h|i j|k l|
+			// +---+---+---+
+			// |m n|o p|
+			// |q r|s t|
+			// +---+---+
+
+			// Pixels a, f, l, q are not needed, since we need to understand the
+			// the connectivity between these blocks and those pixels only matter
+			// when considering the outer connectivities
+
+			// A bunch of defines is used to check if the pixels are foreground
+			// and to define actions to be performed on blocks
+			{
+				#define CONDITION_B img_row_prev_prev[c-1]>0
+				#define CONDITION_C img_row_prev_prev[c]>0
+				#define CONDITION_D img_row_prev_prev[c+1]>0
+				#define CONDITION_E img_row_prev_prev[c+2]>0
+
+				#define CONDITION_G img_row_prev[c-2]>0
+				#define CONDITION_H img_row_prev[c-1]>0
+				#define CONDITION_I img_row_prev[c]>0
+				#define CONDITION_J img_row_prev[c+1]>0
+				#define CONDITION_K img_row_prev[c+2]>0
+
+				#define CONDITION_M img_row[c-2]>0
+				#define CONDITION_N img_row[c-1]>0
+				#define CONDITION_O img_row[c]>0
+				#define CONDITION_P img_row[c+1]>0
+
+				#define CONDITION_R img_row_fol[c-1]>0
+				#define CONDITION_S img_row_fol[c]>0
+				#define CONDITION_T img_row_fol[c+1]>0
+
+				// Action 1: No action
+				#define ACTION_1 img_labels_row[c] = 0;
+				// Action 2: New label (the block has foreground pixels and is not connected to anything else)
+				#define ACTION_2 img_labels_row[c] = lunique; \
+									P[lunique] = lunique;        \
+									lunique = lunique + 1;
+				//Action 3: Assign label of block P
+				#define ACTION_3 img_labels_row[c] = img_labels_row_prev_prev[c - 2];
+				// Action 4: Assign label of block Q
+				#define ACTION_4 img_labels_row[c] = img_labels_row_prev_prev[c];
+				// Action 5: Assign label of block R
+				#define ACTION_5 img_labels_row[c] = img_labels_row_prev_prev[c + 2];
+				// Action 6: Assign label of block S
+				#define ACTION_6 img_labels_row[c] = img_labels_row[c - 2];
+				// Action 7: Merge labels of block P and Q
+				#define ACTION_7 img_labels_row[c] = set_union(P, img_labels_row_prev_prev[c - 2], img_labels_row_prev_prev[c]);
+				//Action 8: Merge labels of block P and R
+				#define ACTION_8 img_labels_row[c] = set_union(P, img_labels_row_prev_prev[c - 2], img_labels_row_prev_prev[c + 2]);
+				// Action 9 Merge labels of block P and S
+				#define ACTION_9 img_labels_row[c] = set_union(P, img_labels_row_prev_prev[c - 2], img_labels_row[c - 2]);
+				// Action 10 Merge labels of block Q and R
+				#define ACTION_10 img_labels_row[c] = set_union(P, img_labels_row_prev_prev[c], img_labels_row_prev_prev[c + 2]);
+				// Action 11: Merge labels of block Q and S
+				#define ACTION_11 img_labels_row[c] = set_union(P, img_labels_row_prev_prev[c], img_labels_row[c - 2]);
+				// Action 12: Merge labels of block R and S
+				#define ACTION_12 img_labels_row[c] = set_union(P, img_labels_row_prev_prev[c + 2], img_labels_row[c - 2]);
+				// Action 13: Merge labels of block P, Q and R
+				#define ACTION_13 img_labels_row[c] = set_union(P, set_union(P, img_labels_row_prev_prev[c - 2], img_labels_row_prev_prev[c]), img_labels_row_prev_prev[c + 2]);
+				// Action 14: Merge labels of block P, Q and S
+				#define ACTION_14 img_labels_row[c] = set_union(P, set_union(P, img_labels_row_prev_prev[c - 2], img_labels_row_prev_prev[c]), img_labels_row[c - 2]);
+				//Action 15: Merge labels of block P, R and S
+				#define ACTION_15 img_labels_row[c] = set_union(P, set_union(P, img_labels_row_prev_prev[c - 2], img_labels_row_prev_prev[c + 2]), img_labels_row[c - 2]);
+				//Action 16: labels of block Q, R and S
+				#define ACTION_16 img_labels_row[c] = set_union(P, set_union(P, img_labels_row_prev_prev[c], img_labels_row_prev_prev[c + 2]), img_labels_row[c - 2]);
+			}
+			// The following Directed Rooted Acyclic Graphs (DAGs) allow to choose which action to
+			// perform, checking as few conditions as possible. Special DAGs are used for the first/last
+			// line of the image and for single line images. Actions: the blocks label are provisionally
+			// stored in the top left pixel of the block in the labels image.
+			if (h == 1) {
+				// Single line
+				const PixelT * const img_row = img.ptr<PixelT>(0);
+				LabelT * const img_labels_row = imgLabels.ptr<LabelT>(0);
+				int c = -2;
+				#include "./OpencvCode/ccl_bolelli_forest_singleline.inc.hpp"
+			}
+			else {
+				// More than one line
+
+				// First couple of lines
+				{
+					const PixelT * const img_row = img.ptr<PixelT>(0);
+					const PixelT * const img_row_fol = (PixelT *)(((char*)img_row) + img.step.p[0]);
+					LabelT * const img_labels_row = imgLabels.ptr<LabelT>(0);
+					int c = -2;
+					#include "./OpencvCode/ccl_bolelli_forest_firstline.inc.hpp"
+				}
+
+				// Every other line but the last one if image has an odd number of rows
+				for (int r = 2; r < e_rows; r += 2) {
+					// Get rows pointer
+					const PixelT * const img_row = img.ptr<PixelT>(r);
+					const PixelT * const img_row_prev = (PixelT *)(((char*)img_row) - img.step.p[0]);
+					const PixelT * const img_row_prev_prev = (PixelT *)(((char*)img_row_prev) - img.step.p[0]);
+					const PixelT * const img_row_fol = (PixelT *)(((char*)img_row) + img.step.p[0]);
+					LabelT * const img_labels_row = imgLabels.ptr<LabelT>(r);
+					LabelT * const img_labels_row_prev_prev = (LabelT *)(((char*)img_labels_row) - imgLabels.step.p[0] - imgLabels.step.p[0]);
+
+					int c = -2;
+					goto tree_0;
+
+					#include "./OpencvCode/ccl_bolelli_forest.inc.hpp"
+				}
+
+				// Last line (in case the rows are odd)
+				if (o_rows) {
+					int r = h - 1;
+					const PixelT * const img_row = img.ptr<PixelT>(r);
+					const PixelT * const img_row_prev = (PixelT *)(((char*)img_row) - img.step.p[0]);
+					const PixelT * const img_row_prev_prev = (PixelT *)(((char*)img_row_prev) - img.step.p[0]);
+					LabelT * const img_labels_row = imgLabels.ptr<LabelT>(r);
+					LabelT * const img_labels_row_prev_prev = (LabelT *)(((char*)img_labels_row) - imgLabels.step.p[0] - imgLabels.step.p[0]);
+					int c = -2;
+					#include "./OpencvCode/ccl_bolelli_forest_lastline.inc.hpp"
+				}
+			}
+
+			// undef conditions and actions
+			{
+				#undef ACTION_1
+				#undef ACTION_2
+				#undef ACTION_3
+				#undef ACTION_4
+				#undef ACTION_5
+				#undef ACTION_6
+				#undef ACTION_7
+				#undef ACTION_8
+				#undef ACTION_9
+				#undef ACTION_10
+				#undef ACTION_11
+				#undef ACTION_12
+				#undef ACTION_13
+				#undef ACTION_14
+				#undef ACTION_15
+				#undef ACTION_16
+
+				#undef CONDITION_B
+				#undef CONDITION_C
+				#undef CONDITION_D
+				#undef CONDITION_E
+
+				#undef CONDITION_G
+				#undef CONDITION_H
+				#undef CONDITION_I
+				#undef CONDITION_J
+				#undef CONDITION_K
+
+				#undef CONDITION_M
+				#undef CONDITION_N
+				#undef CONDITION_O
+				#undef CONDITION_P
+
+				#undef CONDITION_R
+				#undef CONDITION_S
+				#undef CONDITION_T
+			}
+
+			// Second scan + analysis
+			LabelT nLabels = flattenL(P, lunique);
+			sop.init(nLabels);
+
+			int r = 0;
+			for (; r < e_rows; r += 2) {
+				// Get rows pointer
+				const PixelT * const img_row = img.ptr<PixelT>(r);
+				const PixelT * const img_row_fol = (PixelT *)(((char*)img_row) + img.step.p[0]);
+				LabelT * const img_labels_row = imgLabels.ptr<LabelT>(r);
+				LabelT * const img_labels_row_fol = (LabelT *)(((char*)img_labels_row) + imgLabels.step.p[0]);
+				int c = 0;
+				for (; c < e_cols; c += 2) {
+					LabelT iLabel = img_labels_row[c];
+					if (iLabel > 0) {
+						iLabel = P[iLabel];
+						if (img_row[c] > 0) {
+							img_labels_row[c] = iLabel;
+							sop(r, c, iLabel);
+						}
+						else {
+							img_labels_row[c] = 0;
+							sop(r, c, 0);
+						}
+						if (img_row[c + 1] > 0) {
+							img_labels_row[c + 1] = iLabel;
+							sop(r, c + 1, iLabel);
+						}
+						else {
+							img_labels_row[c + 1] = 0;
+							sop(r, c + 1, 0);
+						}
+						if (img_row_fol[c] > 0) {
+							img_labels_row_fol[c] = iLabel;
+							sop(r + 1, c, iLabel);
+						}
+						else {
+							img_labels_row_fol[c] = 0;
+							sop(r + 1, c, 0);
+						}
+						if (img_row_fol[c + 1] > 0) {
+							img_labels_row_fol[c + 1] = iLabel;
+							sop(r + 1, c + 1, iLabel);
+						}
+						else {
+							img_labels_row_fol[c + 1] = 0;
+							sop(r + 1, c + 1, 0);
+						}
+					}
+					else {
+						img_labels_row[c] = 0;
+						sop(r, c, 0);
+						img_labels_row[c + 1] = 0;
+						sop(r, c + 1, 0);
+						img_labels_row_fol[c] = 0;
+						sop(r + 1, c, 0);
+						img_labels_row_fol[c + 1] = 0;
+						sop(r + 1, c + 1, 0);
+					}
+				}
+				// Last column if the number of columns is odd
+				if (o_cols) {
+					LabelT iLabel = img_labels_row[c];
+					if (iLabel > 0) {
+						iLabel = P[iLabel];
+						if (img_row[c] > 0) {
+							img_labels_row[c] = iLabel;
+							sop(r, c, iLabel);
+						}
+						else {
+							img_labels_row[c] = 0;
+							sop(r, c, 0);
+						}
+						if (img_row_fol[c] > 0) {
+							img_labels_row_fol[c] = iLabel;
+							sop(r + 1, c, iLabel);
+						}
+						else {
+							img_labels_row_fol[c] = 0;
+							sop(r + 1, c, 0);
+						}
+					}
+					else {
+						img_labels_row[c] = 0;
+						sop(r, c, 0);
+						img_labels_row_fol[c] = 0;
+						sop(r + 1, c, 0);
+					}
+				}
+			}
+			// Last row if the number of rows is odd
+			if (o_rows) {
+				// Get rows pointer
+				const PixelT * const img_row = img.ptr<PixelT>(r);
+				LabelT * const img_labels_row = imgLabels.ptr<LabelT>(r);
+				int c = 0;
+				for (; c < e_cols; c += 2) {
+					LabelT iLabel = img_labels_row[c];
+					if (iLabel > 0) {
+						iLabel = P[iLabel];
+						if (img_row[c] > 0) {
+							img_labels_row[c] = iLabel;
+							sop(r, c, iLabel);
+						}
+						else {
+							img_labels_row[c] = 0;
+							sop(r, c, 0);
+						}
+						if (img_row[c + 1] > 0) {
+							img_labels_row[c + 1] = iLabel;
+							sop(r, c + 1, iLabel);
+						}
+						else {
+							img_labels_row[c + 1] = 0;
+							sop(r, c + 1, 0);
+						}
+					}
+					else {
+						img_labels_row[c] = 0;
+						sop(r, c, 0);
+						img_labels_row[c + 1] = 0;
+						sop(r, c + 1, 0);
+					}
+				}
+				// Last column if the number of columns is odd
+				if (o_cols) {
+					LabelT iLabel = img_labels_row[c];
+					if (iLabel > 0) {
+						iLabel = P[iLabel];
+						if (img_row[c] > 0) {
+							img_labels_row[c] = iLabel;
+							sop(r, c, iLabel);
+						}
+						else {
+							img_labels_row[c] = 0;
+							sop(r, c, 0);
+						}
+					}
+					else {
+						img_labels_row[c] = 0;
+						sop(r, c, iLabel);
+					}
+				}
+			}
+
+			sop.finish();
+			return nLabels;
+		}//End function LabelingBolelli operator()
+	};//End struct LabelingBolelli
+
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// brief:
 	// m_image is CV_8U; m_mask is CV_8UC1 
@@ -87,6 +532,7 @@ namespace PZTIMAGE {
 	// PZTImage a = b; --> they(a, b) refer to the same memory.
 	// existing problems: mult_image() do not think about float
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	class PZTRegions;
 
 	class PZTImage {
@@ -278,7 +724,7 @@ namespace PZTIMAGE {
 
 		/* 
 		* brief    : Return features of a connected domain.
-		* param0[i]: The index of connected domaim. It starts from scratch.
+		* param0[i]: The index of connected domaim. It starts from 0.
 		*/
 		RegionFeature GetRegionFeature(unsigned int t_index);
 
@@ -430,6 +876,7 @@ namespace PZTIMAGE {
 		static PZTRegions InitMemberComReg();
 		static PZTImage InitMemberComImg();
 		static bool TestFunc_UpdataRegionsFeaturesV2();
+		static bool TestFunc_Connection();
 
 	private:
 		static PZTIMAGE::PZTImage						m_comImg;
