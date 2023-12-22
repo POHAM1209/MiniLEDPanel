@@ -328,7 +328,7 @@ namespace PZTIMAGE {
 		m_isRegionChanged(false)
 	{
 		// confirm t_rg
-		if(t_reg.type() != CV_8UC1)
+		if(t_reg.type() != PZTREGION_M_REGIONS_TYPE)
 			return;
 
 		m_regions = t_reg.clone();
@@ -340,7 +340,7 @@ namespace PZTIMAGE {
 		m_isRegionChanged(false)
 	{
 		// confirm t_rg
-		if(t_reg.type() != CV_8UC1)
+		if(t_reg.type() != PZTREGION_M_REGIONS_TYPE)
 			return;
 
 		m_regions = t_reg;
@@ -373,7 +373,7 @@ namespace PZTIMAGE {
 		// updata m_regions and m_featuresPtr
 		cv::Mat tmp;
 		uint32_t index = 0, idx = 0;
-		m_regions = cv::Mat::zeros(t_reg.m_regions.rows, t_reg.m_regions.cols, CV_8UC1);
+		m_regions = cv::Mat::zeros(t_reg.m_regions.rows, t_reg.m_regions.cols, PZTREGION_M_REGIONS_TYPE);
 		if(t_reg.m_featuresPtr != nullptr){
 
 			m_featuresPtr = std::make_shared<std::vector<RegionFeature>>();
@@ -579,7 +579,12 @@ namespace PZTIMAGE {
 			return false;
 
 		cv::bitwise_not(m_regions, m_regions);
-		cv::threshold(m_regions, m_regions, 254, 1, cv::THRESH_BINARY);
+#ifdef PZTREGION_MAT_16U
+		cv::threshold(m_regions, m_regions, 0xFFFE, 1, cv::THRESH_BINARY);
+#endif
+#ifdef PZTREGION_MAT_8U
+		cv::threshold(m_regions, m_regions, 0x00FE, 1, cv::THRESH_BINARY);
+#endif
 
 		m_isRegionChanged = true;
 
@@ -615,19 +620,33 @@ namespace PZTIMAGE {
 		if(!Disconnection())
 			return false;
 
+#ifdef PZTREGION_MAT_8U
 		cv::Mat tmp16;
 		// connectedComponents param1(8 bit) and param2(16 or 32 bit)   type deferent
 		auto regionNum = cv::connectedComponents(m_regions, tmp16, 8, CV_16U);
 		if(regionNum > 255)
 			return false;
 		else{
-			tmp16.convertTo(m_regions, CV_8UC1);
+			tmp16.convertTo(m_regions, PZTREGION_M_REGIONS_TYPE);
 			m_regionNum = regionNum - 1;
 			m_isRegionChanged = true;
 			return true;
 		}
+#endif
 
-		//cv::InputArray
+#ifdef PZTREGION_MAT_16U
+		cv::Mat tmp16;
+		auto regionNum = _ConnectedComponents(m_regions, tmp16);
+		if(regionNum > 0x0000FFFF || regionNum < 0)
+			return false;
+		else{
+			m_regions = tmp16;
+			m_regionNum = regionNum - 1;
+			m_isRegionChanged = true;
+			return true;
+		}
+#endif
+
 	}
 
 	bool PZTRegions::Disconnection(){
@@ -653,9 +672,19 @@ namespace PZTIMAGE {
 		if(m_regions.empty() || m_regionNum != 1)
 			return false;
 		
+#ifdef PZTREGION_MAT_8U
 		std::vector<std::vector<cv::Point>> contours;
 		cv::findContours(m_regions, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE); // gain external contours
 		cv::drawContours(m_regions, contours, -1, cv::Scalar(1), cv::FILLED);
+#endif
+
+#ifdef PZTREGION_MAT_16U
+		cv::Mat tmp0;
+		m_regions.convertTo(tmp0, CV_8UC1);
+		std::vector<std::vector<cv::Point>> contours;
+		cv::findContours(tmp0, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE); // gain external contours
+		cv::drawContours(m_regions, contours, -1, cv::Scalar(1), cv::FILLED);
+#endif
 
 		m_isRegionChanged = true;
 
@@ -666,7 +695,14 @@ namespace PZTIMAGE {
 		// 多边形拟合(简化后续计算量) -> 
 
 		std::vector<std::vector<cv::Point>> contours;
-    	cv::findContours(m_regions, contours, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);
+#ifdef PZTREGION_MAT_8U
+		cv::findContours(m_regions, contours, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);
+#endif
+#ifdef PZTREGION_MAT_16U
+		cv::Mat tmp0;
+		m_regions.convertTo(tmp0, CV_8UC1);
+		cv::findContours(tmp0, contours, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);
+#endif
 
 		PZTRegions::Clear();
 
@@ -777,7 +813,8 @@ namespace PZTIMAGE {
 
 		cv::Mat tmp;
 		cv::resize(m_regions, tmp, cv::Size(m_regions.cols * t_factor, m_regions.rows * t_factor));
-		cv::imshow("m_regions", tmp * 40);
+		tmp.mul(tmp, 40);
+		cv::imshow("m_regions", tmp);
 		cv::waitKey(0);
 
 		if(t_isWrite)
@@ -790,6 +827,21 @@ namespace PZTIMAGE {
 		m_regionNum = maxValue;
 		
 		return true;
+	}
+
+	unsigned int PZTRegions::_ConnectedComponents(cv::InputArray t_image, cv::OutputArray t_labels){
+		const cv::Mat img = t_image.getMat();
+		t_labels.create(t_image.size(), CV_MAT_DEPTH(CV_16U));
+		cv::Mat labels = t_labels.getMat();
+
+		// confirm
+		if(img.channels() != 1 || labels.channels() != 1 || img.depth() != CV_16U)
+			return -1;
+
+		NoOp sop;
+		unsigned short regNum = PZTIMAGE::LabelingBolelli<ushort, ushort, NoOp>()(img, labels, 8 , sop);
+
+		return regNum;
 	}
 
 	bool PZTRegions::_UpdataRegionFeaturesV1(){
@@ -1020,7 +1072,7 @@ namespace PZTIMAGE {
 
 	PZTRegions CoreTestor::InitMemberComReg(){
 		PZTRegions tmp;
-		m_comImg.Threshold(tmp, 240, 255);
+		m_comImg.Threshold(tmp, 120, 255);
 		return tmp;
 	}
 
@@ -1040,14 +1092,16 @@ namespace PZTIMAGE {
 		return true;
 	}
 
+	bool CoreTestor::TestFunc_Connection(){
+		m_comReg.Connection();
+		m_comReg.DisplayRegion(0.5);
+
+		return true;
+	}
+
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Other
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	int FuncFeature(int t_a) {
-
-		return t_a + 2;
-	}
 
 	bool TestCore() {
 		bool res = false;
@@ -1055,7 +1109,26 @@ namespace PZTIMAGE {
 		//HalconDetection();
 
 		// 测试 _UpdataRegionsFeaturesV2()
-		CoreTestor::TestFunc_UpdataRegionsFeaturesV2();
+		//CoreTestor::TestFunc_UpdataRegionsFeaturesV2();
+		//CoreTestor::TestFunc_Connection();
+
+		cv::Mat img16 = cv::imread("./connectedDomain.jpg", cv::IMREAD_GRAYSCALE);
+		cv::threshold(img16, img16, 120, 1, cv::THRESH_BINARY);
+		cv::Mat img8 = img16;
+		img16.convertTo(img16, CV_16UC1);
+
+		// [ ] DisplayRegion();
+		// [ ] FillUp();
+		// [ ] ShapeTrans();
+		PZTRegions reg0(std::move(img16));
+
+		reg0.ShapeTrans(SHAPETRANSTYPE_RECTANGLE1);
+		reg0.Connection();
+		reg0.GetRegionFeature(0);
+
+		
+		reg0.DisplayRegion();
+
 
 		return res;
 	}
