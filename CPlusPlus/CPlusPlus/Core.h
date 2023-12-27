@@ -19,10 +19,10 @@
 #include <iostream>
 
 // ! The number of thread in the ThreadPool.
-#define DEFAULT_THREAD_NUM												8
+#define DEFAULT_THREAD_NUM												12
 
 // ! Enable multi-thread acceleration.
-//#define HAVE_MULTITHREAD_ACCELERATION
+#define HAVE_MULTITHREAD_ACCELERATION
 
 // ! The depth of m_regions, the member of PZTRegion, is CV_8U.
 //#define PZTREGION_MAT_8U
@@ -37,7 +37,7 @@
 	#define PZTREGION_M_REGIONS_TYPE									CV_8UC1
 #endif
 #ifdef PZTREGION_MAT_16U
-	#define PZTREGION_M_REGIONS_TYPE									CV_16UC1
+	#define PZTREGION_M_REGIONS_TYPE									CV_16UC1		
 #endif
 
 /*
@@ -809,7 +809,7 @@ namespace PZTIMAGE {
 		RegionFeature _GainOneRegionFeaturesV3(uint32_t t_idx);
 
 		bool __GainOneRegionFeatures(cv::InputArray t_oneRegion, const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
-		bool _GainAreaFeature(cv::InputArray t_oneRegion, RegionFeature& t_feature);
+		bool _GainAreaFeature(cv::InputArray t_oneRegion, const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
 		bool _GainContlengthFeature(const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
 		bool _GainCircularityFeature(RegionFeature& t_feature);
 		bool _GainRectangularityFeature(RegionFeature& t_feature);

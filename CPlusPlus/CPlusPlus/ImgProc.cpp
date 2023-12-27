@@ -21,13 +21,13 @@ namespace PZTIMAGE {
 			return false;
 		if (t_imgI.m_image.type() == CV_8UC1)
 			return false;
-		
+
 		t_imgI.ChangeColorSpace(TRANSCOLORSPACE_RGB2GRAY);
 		t_imgO = t_imgI;
 
 		return res;
 	}
-	
+
 	bool OperatorSet::threshold(PZTImage t_imgI, PZTRegions& t_reg, uint8_t t_minGray, uint8_t t_maxGray) {
 		bool res = true;
 
@@ -35,18 +35,22 @@ namespace PZTIMAGE {
 			return false;
 		if (t_imgI.m_image.type() == CV_8UC3)
 			return false;
-		
+
 		cv::Mat i_image = t_imgI.m_image;
-		cv::Mat o_image ,o_image1 ,o_image2;
+		cv::Mat o_image, o_image1, o_image2, o_image16;
 
 		cv::threshold(i_image, o_image1, t_minGray, 1, cv::THRESH_BINARY);
 		cv::threshold(i_image, o_image2, t_maxGray, 1, cv::THRESH_BINARY_INV);			//阈值分割，分割后连通域只有一种,像素值一致为1
-		
-		bitwise_and(o_image1, o_image2, o_image);
-		PZTRegions o_region(std::move(o_image));												//利用图像构造region，得到阈值分割结果图像
-		t_reg = o_region;															//输出
 
-		
+		bitwise_and(o_image1, o_image2, o_image);
+		if (o_image.type() != PZTREGION_M_REGIONS_TYPE)
+		{
+			o_image.convertTo(o_image16, PZTREGION_M_REGIONS_TYPE);
+		}
+		PZTRegions o_region(std::move(o_image16));												//利用图像构造region，得到阈值分割结果图像
+		t_reg = o_region;																		//输出
+
+
 		return res;
 	}
 
@@ -56,8 +60,8 @@ namespace PZTIMAGE {
 		t_reg.Connection();				//连通域分割，已得到m_regionNum,m_regions，缺少m_feature
 		for (int i = 1; i < t_reg.GetRegionNum(); i++)
 		{
-			//需要变量来接收，还是直接在函数里改了? 
 			t_reg.GetRegionFeature(i);
+						
 		}
 		t_regs = t_reg;					//输出
 		return res;
@@ -72,9 +76,19 @@ namespace PZTIMAGE {
 			return false;
 
 		complement(t_reg, t_reg);
+		//image和mask的对齐
+		if (t_imgI.m_image.type() != PZTREGION_M_REGIONS_TYPE)
+		{
+			t_imgI.m_image.convertTo(t_imgI.m_image, PZTREGION_M_REGIONS_TYPE);
+		}
+		if (t_imgI.m_mask.type() != PZTREGION_M_REGIONS_TYPE)
+		{
+			t_imgI.m_mask.convertTo(t_imgI.m_mask, PZTREGION_M_REGIONS_TYPE);
+		}
 		t_imgI.ReduceDomain(t_reg);
 		t_imgI.m_image = t_imgI.m_image.mul(t_imgI.m_mask);
 		t_imgO = t_imgI;
+
 		return res;
 	}
 
@@ -118,11 +132,12 @@ namespace PZTIMAGE {
 				break;
 			}
 		}
-		if(indexs.empty())
+		if (indexs.empty())
 		{
 			std::cout << "数量为0" << std::endl;
 			return false;
 		}
+		std::cout << indexs.size() << std::endl;
 		//t_regI.DisplayRegion();
 		PZTRegions result(std::move(t_regI), indexs);
 		t_regO = result;
@@ -147,32 +162,32 @@ namespace PZTIMAGE {
 
 		if (input.type() == CV_8UC1)
 		{
-		    for (int i = 0; i < input.rows; i++)
-		    {
-		        const uchar* rptr = input.ptr<uchar>(i);
-		        uchar* mptr = mean.ptr<uchar>(i);
-		        uchar* optr = output.ptr<uchar>(i);
-		        for (int j = 0; j < input.cols; j++)
-		        {
-		            optr[j] = cv::saturate_cast<uchar>(round((rptr[j] - mptr[j]) * Factor) + rptr[j] * 1.0f);
-		        }
-		    }
+			for (int i = 0; i < input.rows; i++)
+			{
+				const uchar* rptr = input.ptr<uchar>(i);
+				uchar* mptr = mean.ptr<uchar>(i);
+				uchar* optr = output.ptr<uchar>(i);
+				for (int j = 0; j < input.cols; j++)
+				{
+					optr[j] = cv::saturate_cast<uchar>(round((rptr[j] - mptr[j]) * Factor) + rptr[j] * 1.0f);
+				}
+			}
 		}
 		else if (input.type() == CV_8UC3)
 		{
-		    for (int i = 0; i < input.rows; i++)
-		    {
-		        const uchar* rptr = input.ptr<uchar>(i);
-		        uchar* mptr = mean.ptr<uchar>(i);
-		        uchar* optr = output.ptr<uchar>(i);
-		        for (int j = 0; j < input.cols; j++)
-		        {
-		            //饱和转换 小于0的值会被置为0 大于255的值会被置为255
-		            optr[j * 3] = cv::saturate_cast<uchar>(round((rptr[j * 3] - mptr[j * 3]) * Factor) + rptr[j * 3] * 1.0f);
-		            optr[j * 3 + 1] = cv::saturate_cast<uchar>(round((rptr[j * 3 + 1] - mptr[j * 3 + 1]) * Factor) + rptr[j * 3 + 1] * 1.0f);
-		            optr[j * 3 + 2] = cv::saturate_cast<uchar>(round((rptr[j * 3 + 2] - mptr[j * 3 + 2]) * Factor) + rptr[j * 3 + 2] * 1.0f);
-		        }
-		    }
+			for (int i = 0; i < input.rows; i++)
+			{
+				const uchar* rptr = input.ptr<uchar>(i);
+				uchar* mptr = mean.ptr<uchar>(i);
+				uchar* optr = output.ptr<uchar>(i);
+				for (int j = 0; j < input.cols; j++)
+				{
+					//饱和转换 小于0的值会被置为0 大于255的值会被置为255
+					optr[j * 3] = cv::saturate_cast<uchar>(round((rptr[j * 3] - mptr[j * 3]) * Factor) + rptr[j * 3] * 1.0f);
+					optr[j * 3 + 1] = cv::saturate_cast<uchar>(round((rptr[j * 3 + 1] - mptr[j * 3 + 1]) * Factor) + rptr[j * 3 + 1] * 1.0f);
+					optr[j * 3 + 2] = cv::saturate_cast<uchar>(round((rptr[j * 3 + 2] - mptr[j * 3 + 2]) * Factor) + rptr[j * 3 + 2] * 1.0f);
+				}
+			}
 		}
 		t_imgO.m_image = output;
 
@@ -233,7 +248,7 @@ namespace PZTIMAGE {
 		bool res = true;
 		if (t_imgI.m_image.empty())
 			return false;
-		t_imgI.GetImageSize(width,height);
+		t_imgI.GetImageSize(width, height);
 
 		return res;
 	}
@@ -243,7 +258,7 @@ namespace PZTIMAGE {
 		bool res = true;
 		if (t_imgI.m_image.empty())
 			return false;
-		if (t_imgI.m_image.type() != CV_8UC3)
+		if (t_imgI.m_image.channels() != 3)
 			return false;
 		t_imgI.Decompose(t_imgR, t_imgG, t_imgB);
 
@@ -266,19 +281,19 @@ namespace PZTIMAGE {
 		bool res = true;
 
 		StructElement type = STRUCTELEMENT_CIRCLE;
-		t_regI.Erosion(type,t_radius);
+		t_regI.Erosion(type, t_radius);
 		t_regO = t_regI;
 
 		return res;
 	}
-	
+
 	bool OperatorSet::mean_image(PZTImage t_imgI, PZTImage& t_imgO, uint8_t t_MaskWidth, uint8_t t_MaskHeight)
 	{
 		bool res = true;
 
 		if (t_imgI.m_image.empty())
 			return false;
-		if (t_imgI.m_image.type() == CV_8UC3)
+		if (t_imgI.m_image.channels() == 3)
 			return false;
 
 		cv::Mat input = t_imgI.m_image;
@@ -301,52 +316,61 @@ namespace PZTIMAGE {
 		//判断
 		if (t_imgI.m_image.empty())
 			return false;
-		if (t_imgI.m_image.type() == CV_8UC3)
+		if (t_imgI.m_image.channels() == 3)
 			return false;
 		if (t_thresholdimgI.m_image.empty())
 			return false;
-		if (t_thresholdimgI.m_image.type() == CV_8UC3)
+		if (t_thresholdimgI.m_image.channels() == 3)
 			return false;
 
 		cv::Mat src = t_imgI.m_image;
 		cv::Mat srcMean = t_thresholdimgI.m_image;
 		//cv::Mat result = t_imgO.m_image;			此处报异常
-		cv::Mat result = cv::Mat(src.size(), CV_8UC1, cv::Scalar(0));
+		cv::Mat result = cv::Mat(src.size(), CV_16UC1, cv::Scalar(0));
 
-		int r = src.rows; //高
-		int c = src.cols; //宽
-		int Value = 0;
-		for (int i = 0; i < c*r; i++)
+		int r = result.rows; //高
+		int c = result.cols; //宽
+		//for (int i = 0; i < c * r; i++)
+		for (int i = 0; i < r; i++)
+			for (int j = 0; j < c; j++)
 		{
+				uchar* srcPtr = src.data + src.step * i;
+				uchar* meanPtr = srcMean.data + srcMean.step * i;
+
 			int datasrc = src.data[i];
 			int datasrcMean = srcMean.data[i];
-			
+			int16_t value;
 			switch (Light_Dark)
 			{
 			case Light:
-				Value = datasrc - datasrcMean;
-				if (Value >= t_offset)
+				value = *((int16_t*)srcPtr + j) - *((int16_t*)meanPtr + j);
+				if (value >= t_offset)
 				{
 					result.data[i] = 1;
 				}
 				break;
 			case Dark:
-				Value = datasrcMean - datasrc;
-				if (Value >= t_offset)
+				//Value = datasrcMean - datasrc;
+				value = *((int16_t*)meanPtr + j) - *((int16_t*)srcPtr + j);
+				
+				if (value >= t_offset)
 				{
-					result.data[i] = 1;
+					//指针的赋值
+					uchar* resPtr = result.data + result.step * i;
+					*((int16_t*)resPtr + j) = 1;
+					//result.data[i] = 1;
 				}
 				break;
 			case Equal:
-				Value = datasrc - datasrcMean;
-				if (Value >= -t_offset && Value <= t_offset)
+				value = *((int16_t*)srcPtr + j) - *((int16_t*)meanPtr + j);
+				if (value >= -t_offset && value <= t_offset)
 				{
 					result.data[i] = 1;
 				}
 				break;
 			case Not_equal:
-				Value = datasrc - datasrcMean;
-				if (Value < -t_offset || Value > t_offset)
+				value = *((int16_t*)srcPtr + j) - *((int16_t*)meanPtr + j);
+				if (value < -t_offset || value > t_offset)
 				{
 					result.data[i] = 1;
 				}
@@ -355,6 +379,7 @@ namespace PZTIMAGE {
 				break;
 			}
 		}
+		//cv::imwrite("E:/img/1122/result1.jpg", result);
 		PZTRegions res_region(std::move(result));
 		t_regO = res_region;
 
@@ -366,7 +391,7 @@ namespace PZTIMAGE {
 		bool res = true;
 		t_regI.Opening(STRUCTELEMENT_RECTANGLE, t_Width, t_Height);
 		t_regO = t_regI;
-		
+
 		return res;
 	}
 	bool OperatorSet::opening_circle(PZTRegions t_regI, PZTRegions& t_regO, uint8_t radius)
@@ -377,7 +402,7 @@ namespace PZTIMAGE {
 
 		return res;
 	}
-	bool OperatorSet::dilation_rectangle1(PZTRegions t_regI, PZTRegions& t_regO, uint8_t t_Width, uint8_t t_Height)
+	bool OperatorSet::dilation_rectangle1(PZTRegions t_regI, PZTRegions& t_regO, unsigned int t_Width, unsigned int t_Height)
 	{
 		bool res = true;
 		t_regI.Dilation(STRUCTELEMENT_RECTANGLE, t_Width, t_Height);
@@ -389,6 +414,14 @@ namespace PZTIMAGE {
 	{
 		bool res = true;
 		t_regI.Closing(STRUCTELEMENT_CIRCLE, radius, radius);
+		t_regO = t_regI;
+
+		return res;
+	}
+	bool OperatorSet::closing_rectangle1(PZTRegions t_regI, PZTRegions& t_regO, uint8_t t_Width, uint8_t t_Height)
+	{
+		bool res = true;
+		t_regI.Closing(STRUCTELEMENT_RECTANGLE, t_Width, t_Height);
 		t_regO = t_regI;
 
 		return res;
@@ -448,7 +481,7 @@ namespace PZTIMAGE {
 		return res;
 	}
 
-	bool OperatorSet::region_features(PZTRegions t_regI, Features t_fea, int &Value)
+	bool OperatorSet::region_features(PZTRegions t_regI, Features t_fea, int& Value)
 	{
 		bool res = true;
 
@@ -485,12 +518,12 @@ namespace PZTIMAGE {
 	bool OperatorSet::difference(PZTRegions t_regI1, PZTRegions t_regI2, PZTRegions& t_regO)
 	{
 		bool res = true;
-		
+
 
 		return res;
 	}
 
-	bool OperatorSet::display_image(PZTImage t_imgI,std::string WindowName,bool save,bool diplay)
+	bool OperatorSet::display_image(PZTImage t_imgI, std::string WindowName, bool save, bool diplay)
 	{
 		bool res = true;
 		if (t_imgI.m_image.empty())
@@ -522,7 +555,7 @@ namespace PZTIMAGE {
 		{
 			cv::imshow(WindowName, show_image);
 		}
-	
+
 		int keyValue = cv::waitKey(10);
 
 		if (keyValue && 0xFF == '27')
@@ -601,43 +634,44 @@ namespace PZTIMAGE {
 
 		/***************复现简单图像(缺陷数量少的图像)******************/
 		//变量部分
-
-		std::string filename = "E:/1dong/5-18-ExposureTime3000-normal/test1.jpg";
+		std::string filename = "E:\\1dong\\5-18-ExposureTime3000-normal\\1.tif";
+		uint8_t chipGrayValue = 170;			//检测芯片所需最小灰度值，绿色背景图170，灰色背景图200
+		uint8_t backGrayValue = 120;			//检测背景所需最大灰度值
+		uint16_t chipminArea = 4500;			//芯片面积(绿色背景图 5000附近)
+		uint16_t chipmaxArea = 6000;
+		unsigned int AOIWidth = 150;			//绿色背景芯片宽(横向)
+		unsigned int AOIHeight = 200;			//绿色背景芯片高(纵向)
+		uint16_t rectMinArea = 4500;			//方框的最小面积，中间镂空，数值等于膨胀宽高的周长700？由于计算面积的方式，计算的是整体面积，则是5000
 		unsigned int width, height;
 
 		//图像部分
-		PZTImage Image, Gray, R, G, B, Emphasize, Reduce, GrayReduce, Mean;
-		PZTRegions Region, Threshold, Connection, SelectRegion1, Union, Test, Closing, Trans, Opening, Dyn, Dilation, SelectRegion2;
+		PZTImage Image,Gray, R, G, B, Emphasize, Reduce, Mean;
+		PZTRegions chipRegion, Background, Connection, chipSelectRegion, Union,Opening,
+			Trans, Dyn, Dilation, resultSelectRegion, Connection1, Opening1;
 
 		//算子部分
 		OperatorSet::read_image(Image, filename);
 		//OperatorSet::gray_image(Image, Gray);
-
 		OperatorSet::get_image_size(Image, width, height);
 		OperatorSet::decompose3(Image, R, G, B);		//当图片已为灰度图时
 		OperatorSet::emphasize(B, Emphasize, 36, 36, 3);
-		OperatorSet::threshold(Emphasize, Threshold, 170, 255);
-		OperatorSet::opening_rectangle1(Threshold, Opening, 20, 20);		//这一步可直接变为矩形
-		//先做形态学再打散可能少一些缺陷，可能不会出现超出情况
+		OperatorSet::threshold(Emphasize, chipRegion, chipGrayValue, 255);			//检测芯片用
+		//OperatorSet::threshold(Emphasize, Background, 0, backGrayValue);			//检测背景用
+		OperatorSet::opening_rectangle1(chipRegion, Opening, 10, 10);				//使用opening运行速度快了，加速的原因是跳过updata了?
 		OperatorSet::connection(Opening, Connection);
-		OperatorSet::select_shape(Connection, SelectRegion1, FEATURES_AREA, 0, 1000);
-		OperatorSet::shape_trans(SelectRegion1, Trans, SHAPETRANSTYPE_RECTANGLE1);
+		OperatorSet::select_shape(Connection, chipSelectRegion, FEATURES_AREA, chipminArea, chipmaxArea);		//会存在芯片计算错误
+		OperatorSet::shape_trans(chipSelectRegion, Trans, SHAPETRANSTYPE_RECTANGLE1);
 		OperatorSet::union1(Trans, Union);
-		OperatorSet::dilation_rectangle1(Union, Dilation, 50, 50);
+		OperatorSet::dilation_rectangle1(Union, Dilation, AOIWidth, AOIHeight);			//膨胀到比芯片略大
 		OperatorSet::reduce_domain(B, Dilation, Reduce);
 		OperatorSet::mean_image(Reduce, Mean, 7, 7);
-		OperatorSet::dyn_threshold(Reduce, Mean, Dyn, 7, Dark);		//去除芯片后会留下方形边缘
-		Dyn.DisplayRegion();
+		OperatorSet::dyn_threshold(Reduce, Mean, Dyn, 7, Dark);							//去除芯片后会留下方形边缘
 
-		//显示部分
-		//OperatorSet::display_image(Reduce);
-		//B.DisplayImage();
-		//Union.DisplayRegion();
-		//Reduce.DisplayImage();
-		//OperatorSet::display_region(Trans, 1);
-		//OperatorSet::display_region(Connection, 1);
+		//将方框去掉，耗时翻倍
+		OperatorSet::connection(Dyn, Dyn);
+		OperatorSet::select_shape(Dyn, resultSelectRegion, FEATURES_AREA, 0, rectMinArea);	//将方框去掉，只选缺陷
+		resultSelectRegion.DisplayRegion();
 
 		return res;
 	}
-
 }

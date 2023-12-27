@@ -914,8 +914,8 @@ namespace PZTIMAGE {
 
 		// 
 		for(int idx = 0; idx < m_regionNum; ++idx)
-			results[idx] = m_works.enqueue(&PZTRegions::_GainOneRegionFeaturesV3, this, idx);
-		
+			results[idx] = m_works.enqueue(&PZTRegions::_GainOneRegionFeaturesV3, this, idx);	
+			
 		//
 		for(int idx = 0; idx < m_regionNum; ++idx)
 			m_featuresPtr->push_back(results[idx].get());
@@ -953,8 +953,9 @@ namespace PZTIMAGE {
 	}
 
 	bool PZTRegions::__GainOneRegionFeatures(cv::InputArray t_oneRegion, const std::vector<cv::Point>& t_contour, RegionFeature& t_feature){
+		
 		// gain area 
-		_GainAreaFeature(t_oneRegion, t_feature);
+		_GainAreaFeature(t_oneRegion, t_contour ,t_feature);
 
 		// gain contours length
 		_GainContlengthFeature(t_contour, t_feature);
@@ -973,6 +974,13 @@ namespace PZTIMAGE {
 
 		// gain rectangularity
 		_GainRectangularityFeature(t_feature);
+		
+
+
+		//dong--加速策略
+		//1.截取小区域进行area计算	2.主要用area，可以只做area
+		//_GainAreaFeature(t_oneRegion,t_contour, t_feature);
+
 
 		// gain the 
 		// .... 内接圆/外接圆 半径   圆度计算有问题 area
@@ -980,16 +988,20 @@ namespace PZTIMAGE {
 		return true;
 	}
 
-	bool PZTRegions::_GainAreaFeature(cv::InputArray t_oneRegion, RegionFeature& t_features){
+	bool PZTRegions::_GainAreaFeature(cv::InputArray t_oneRegion, const std::vector<cv::Point>& t_contour, RegionFeature& t_features){
 		cv::Mat m = t_oneRegion.getMat();
-
+		//dong新增
+		//cv::Rect rect = cv::boundingRect(t_contour);
+		//cv::Mat ROI;
+		//m(rect).copyTo(ROI);
+		
 		// Method - 1
-		cv::Scalar areaVal = cv::sum(m);
-		t_features.m_area = areaVal[0];
+		//cv::Scalar areaVal = cv::sum(m);			//这个大面积特别耗时
+		//t_features.m_area = areaVal[0];
 
-		// Method - 2
-		//cv::Moments moms = cv::moments(t_contours);
-		//t_features.m_area = moms.m00;
+		// Method - 2				//计算面积方式不一样
+		cv::Moments moms = cv::moments(t_oneRegion);
+		t_features.m_area = moms.m00;
 
 		return true;
 	}
