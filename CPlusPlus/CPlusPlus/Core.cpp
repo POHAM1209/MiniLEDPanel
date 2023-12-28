@@ -138,7 +138,6 @@ namespace PZTIMAGE {
 		return m_image.channels();
 	}
 
-
 	bool PZTImage::GetImageSize(unsigned int& t_imgRow, unsigned int& t_imgCol) const{
 		// confirm m_image
 		if(m_image.empty()){
@@ -510,7 +509,7 @@ namespace PZTIMAGE {
 #ifndef HAVE_MULTITHREAD_ACCELERATION
 			if(!_UpdataRegionsFeaturesV2()) 
 #else
-			if(!_UpdataRegionsFeaturesV3()) 
+			if(!_UpdataRegionsFeaturesV4()) 
 #endif
 				return RegionFeature();
 		}
@@ -914,11 +913,41 @@ namespace PZTIMAGE {
 
 		// 
 		for(int idx = 0; idx < m_regionNum; ++idx)
-			results[idx] = m_works.enqueue(&PZTRegions::_GainOneRegionFeaturesV3, this, idx);	
-			
-		//
+			results[idx] = m_works.enqueue(&PZTRegions::_GainOneRegionFeaturesV3, this, idx);
+		
+		// ?
 		for(int idx = 0; idx < m_regionNum; ++idx)
 			m_featuresPtr->push_back(results[idx].get());
+
+		return true;
+	}
+
+	bool PZTRegions::_UpdataRegionsFeaturesV4(){
+		//m_featuresPtr->clear();
+		m_featuresPtr->reserve(m_regionNum);
+
+		std::vector<std::future<bool>> results(m_regionNum);
+		// 
+		const uint32_t idxNum = 10;
+		std::vector<uint32_t> tmp(idxNum);
+		for(uint32_t idx = 0; idx < m_regionNum; idx += idxNum){
+			tmp[0] = idx;
+			tmp[1] = idx + 1;
+			tmp[2] = idx + 2;
+			tmp[3] = idx + 3;
+			tmp[4] = idx + 4;
+			tmp[5] = idx + 5;
+			tmp[6] = idx + 6;
+			tmp[7] = idx + 7;
+			tmp[8] = idx + 8;
+			tmp[9] = idx + 9;
+
+			results[idx] = m_works.enqueue(&PZTRegions::_GainArrayRegionFeaturesV4, this, tmp);
+		}
+
+		//
+		for(int idx = 0; idx < m_regionNum; ++idx)
+			results[idx].get();
 
 		return true;
 	}
@@ -952,10 +981,30 @@ namespace PZTIMAGE {
 		return trait;
 	}
 
+	bool PZTRegions::_GainArrayRegionFeaturesV4(std::vector<uint32_t>& t_idxs){
+
+		//this->m_featuresPtr;
+
+		cv::Mat oneRegion;
+		for(int idx = 0; idx < t_idxs.size(); ++idx){
+			cv::inRange(this->m_regions, idx, idx, oneRegion);
+			cv::threshold(oneRegion, oneRegion, 0, 1, cv::THRESH_BINARY);
+
+			std::vector<std::vector<cv::Point>> contours;
+			cv::findContours(oneRegion, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+
+			RegionFeature trait;
+			__GainOneRegionFeatures(oneRegion, contours[0], trait);
+
+			(*(this->m_featuresPtr))[idx] = trait;
+		}
+
+		return true;
+	}
+
 	bool PZTRegions::__GainOneRegionFeatures(cv::InputArray t_oneRegion, const std::vector<cv::Point>& t_contour, RegionFeature& t_feature){
-		
 		// gain area 
-		_GainAreaFeature(t_oneRegion, t_contour ,t_feature);
+		_GainAreaFeature(t_oneRegion, t_feature);
 
 		// gain contours length
 		_GainContlengthFeature(t_contour, t_feature);
@@ -969,39 +1018,31 @@ namespace PZTIMAGE {
 		// gain width1/height1/ratio1
 		_GainBoundingRectangleFeature(t_contour, t_feature);
 
-		// gain width1/height1/ratio1
+		// gain width2/height2/ratio2
 		_GainRotatedRectangleFeature(t_contour, t_feature);
 
 		// gain rectangularity
 		_GainRectangularityFeature(t_feature);
-		
-
-
-		//dong--加速策略
-		//1.截取小区域进行area计算	2.主要用area，可以只做area
-		//_GainAreaFeature(t_oneRegion,t_contour, t_feature);
-
 
 		// gain the 
 		// .... 内接圆/外接圆 半径   圆度计算有问题 area
-		
+
 		return true;
 	}
 
-	bool PZTRegions::_GainAreaFeature(cv::InputArray t_oneRegion, const std::vector<cv::Point>& t_contour, RegionFeature& t_features){
-		cv::Mat m = t_oneRegion.getMat();
-		//dong新增
-		//cv::Rect rect = cv::boundingRect(t_contour);
-		//cv::Mat ROI;
-		//m(rect).copyTo(ROI);
-		
+	bool PZTRegions::_GainAreaFeature(cv::InputArray t_oneRegion, RegionFeature& t_features){
+		//cv::Mat m = t_oneRegion.getMat();
+
 		// Method - 1
-		//cv::Scalar areaVal = cv::sum(m);			//这个大面积特别耗时
+		//cv::Scalar areaVal = cv::sum(m);
 		//t_features.m_area = areaVal[0];
 
-		// Method - 2				//计算面积方式不一样
+		// Method - 2
 		cv::Moments moms = cv::moments(t_oneRegion);
 		t_features.m_area = moms.m00;
+
+		// Method - 3
+		
 
 		return true;
 	}
@@ -1124,24 +1165,22 @@ namespace PZTIMAGE {
 		//CoreTestor::TestFunc_UpdataRegionsFeaturesV2();
 		//CoreTestor::TestFunc_Connection();
 
-		cv::Mat img16 = cv::imread("./connectedDomain.jpg", cv::IMREAD_GRAYSCALE);
-		cv::threshold(img16, img16, 120, 1, cv::THRESH_BINARY);
-		cv::Mat img8 = img16;
+		cv::Mat img16 = cv::imread("./39.tif", cv::IMREAD_GRAYSCALE);
+
+		uint16_t a = 2;
+		uint16_t b = 1;
+		uint16_t c = b - a;
+		
+		cv::inRange(img16, 100, 200, img16);
 		img16.convertTo(img16, CV_16UC1);
 
-		// [ ] DisplayRegion();
-		// [ ] FillUp();
-		// [ ] ShapeTrans();
-		PZTRegions reg0(std::move(img16));
-
-		reg0.ShapeTrans(SHAPETRANSTYPE_RECTANGLE1);
-		reg0.Connection();
-		reg0.GetRegionFeature(0);
-
-		
-		reg0.DisplayRegion();
-
-
+		PZTRegions tmp(img16);
+		tmp.Connection();
+		{
+			myTimer a;
+			tmp.GetRegionFeature(0);
+		}
+	
 		return res;
 	}
 
