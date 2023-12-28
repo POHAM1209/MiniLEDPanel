@@ -19,7 +19,7 @@
 #include <iostream>
 
 // ! The number of thread in the ThreadPool.
-#define DEFAULT_THREAD_NUM												12
+#define DEFAULT_THREAD_NUM												8
 
 // ! Enable multi-thread acceleration.
 #define HAVE_MULTITHREAD_ACCELERATION
@@ -37,7 +37,7 @@
 	#define PZTREGION_M_REGIONS_TYPE									CV_8UC1
 #endif
 #ifdef PZTREGION_MAT_16U
-	#define PZTREGION_M_REGIONS_TYPE									CV_16UC1		
+	#define PZTREGION_M_REGIONS_TYPE									CV_16UC1
 #endif
 
 /*
@@ -52,7 +52,10 @@
 *	2023-12-18		
 *		1. [√] 解决最多存储255缺陷()
 * 	2023-12-22
-*		1. [ ] findCountour();
+*		1. [√] findCountour();
+* 	2023-12-23 测试情况 目标 缺陷检测效果、connectedComponent() Umat
+* 		1. 耗时 PZTRegions::Connection() debug:  release:  ; PZTRegions::Select_shaped() debug:  release:  ;
+*		
 */
 
 namespace PZTIMAGE {
@@ -653,6 +656,7 @@ namespace PZTIMAGE {
 		void DisplayImage(float t_factor = 1);
 
 	private:
+		
 
 	private:
 		cv::Mat 										m_image;
@@ -808,14 +812,18 @@ namespace PZTIMAGE {
 		bool _UpdataRegionsFeaturesV3();
 		RegionFeature _GainOneRegionFeaturesV3(uint32_t t_idx);
 
+		bool _UpdataRegionsFeaturesV4();
+		bool _GainArrayRegionFeaturesV4(std::vector<uint32_t>& t_idxs);
+
 		bool __GainOneRegionFeatures(cv::InputArray t_oneRegion, const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
-		bool _GainAreaFeature(cv::InputArray t_oneRegion, const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
+		bool _GainAreaFeature(cv::InputArray t_oneRegion, RegionFeature& t_feature);
 		bool _GainContlengthFeature(const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
 		bool _GainCircularityFeature(RegionFeature& t_feature);
 		bool _GainRectangularityFeature(RegionFeature& t_feature);
 		bool _GainMassCenterFeature(const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
 		bool _GainBoundingRectangleFeature(const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
 		bool _GainRotatedRectangleFeature(const std::vector<cv::Point>& t_contour, RegionFeature& t_feature);
+
 
 /*
 		bool _UpdataRegionsFeaturesV3(){
