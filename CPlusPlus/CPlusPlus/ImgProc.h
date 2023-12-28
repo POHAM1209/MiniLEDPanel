@@ -126,8 +126,7 @@ namespace PZTIMAGE {
 
 		static bool opening_rectangle1(PZTRegions t_regI, PZTRegions& t_regO, uint8_t t_Width, uint8_t t_Height);
 		static bool opening_circle(PZTRegions t_regI, PZTRegions& t_regO, uint8_t radius);
-		static bool dilation_rectangle1(PZTRegions t_regI, PZTRegions& t_regO, unsigned int t_Width, unsigned int t_Height);
-		static bool closing_rectangle1(PZTRegions t_regI, PZTRegions& t_regO, uint8_t t_Width, uint8_t t_Height);
+		static bool dilation_rectangle1(PZTRegions t_regI, PZTRegions& t_regO, uint8_t t_Width, uint8_t t_Height);
 		
 		static bool get_image_size(PZTImage t_imgI, unsigned int& width, unsigned int& height);
 		static bool decompose3(PZTImage t_imgI, PZTImage& t_imgR, PZTImage& t_imgG, PZTImage& t_imgB);
